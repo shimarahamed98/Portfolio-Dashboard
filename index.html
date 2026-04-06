@@ -789,7 +789,8 @@ function renderDiagram(type){
 }
 
 // ── SUPABASE ──
-async function sbQ(url,params=''){const r=await fetch(url+(params?'?'+params+'&select=*':'?select=*'),{headers:H});if(!r.ok)throw new Error(await r.text());return r.json();}
+async function fetchWithTimeout(url,opts={},ms=6000){const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),ms);try{const r=await fetch(url,{...opts,signal:ctrl.signal});clearTimeout(tid);return r;}catch(e){clearTimeout(tid);throw e;}}
+async function sbQ(url,params=''){const r=await fetchWithTimeout(url+(params?'?'+params+'&select=*':'?select=*'),{headers:H});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function sbIns(url,data){const r=await fetch(url,{method:'POST',headers:H,body:JSON.stringify(data)});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function sbUpd(url,filter,data){const r=await fetch(url+'?'+filter,{method:'PATCH',headers:H,body:JSON.stringify(data)});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function sbDel(url,filter){const r=await fetch(url+'?'+filter,{method:'DELETE',headers:H});if(!r.ok)throw new Error(await r.text());}
@@ -846,19 +847,18 @@ async function markLessonComplete(key){if(completedLessons.has(key))return;compl
 async function init(){
   try{apiKey=localStorage.getItem('ts_key')||'';}catch(e){}
   setLM('Loading portfolio...');
-  const loadTimeout=new Promise(resolve=>setTimeout(()=>resolve([[], [], [], {}, {}]), 8000));
   try{
-    const results=await Promise.race([
-      Promise.all([loadPositions(),loadWatch(),loadNotifications(),loadPrices(),loadNotes()]),
-      loadTimeout
+    [positions,watchlist,notifications,priceCache,stockNotes]=await Promise.all([
+      loadPositions(),loadWatch(),loadNotifications(),loadPrices(),loadNotes()
     ]);
-    [positions,watchlist,notifications,priceCache,stockNotes]=results;
   }catch(e){
-    console.warn('DB load failed, starting offline:',e);
-    [positions,watchlist,notifications,priceCache,stockNotes]=[[],[],[],{},{}];
+    console.warn('DB load error:',e);
+    positions=[];watchlist=[];notifications=[];priceCache={};stockNotes={};
   }
   let sk=null,oak=null,swc=null,sor=null;
-  try{[sk,oak,swc,sor]=await Promise.all([getSetting('finnhub_key'),getSetting('openai_key'),getSetting('widget_config'),getSetting('widget_order')]);}catch(e){}
+  try{[sk,oak,swc,sor]=await Promise.all([
+    getSetting('finnhub_key'),getSetting('openai_key'),getSetting('widget_config'),getSetting('widget_order')
+  ]);}catch(e){}
   if(sk&&!apiKey){apiKey=sk;try{localStorage.setItem('ts_key',apiKey);}catch(e){}}
   if(oak)openaiKey=oak;
   if(swc)try{Object.assign(widgetConfig,JSON.parse(swc));}catch(e){}
@@ -1839,7 +1839,6 @@ function buildScannerSignals(sourceFilter){
       const deepAdvice=`${t} is within 2% of your stop loss at $${sl.toFixed(2)}. Current: $${c.toFixed(2)}. This is a critical moment — your risk management plan says to exit at $${sl.toFixed(2)}. Prepare your exit order now. Do not move your stop lower to avoid the loss. Honour your plan.`;
       signals.push({ticker:t,type:'stoploss',icon:'🚨',label:'Stop Loss Zone',color:'#ef4444',bg:'rgba(239,68,68,.1)',border:'rgba(239,68,68,.5)',strength:str,price:c,dc,reason:`Within 2% of stop loss $${sl.toFixed(2)}`,advice:deepAdvice,source:item._source,isOwned,item});
     }
-  });
 
     // ── SELL SIGNALS ──
     // Near take profit — trim
@@ -3605,7 +3604,6 @@ function buildWidgetHTML(order,{winners,losers,watchMovers,bySector,bestSector,m
     earnings:{wide:true,enabled:()=>widgetConfig.earnings,html:()=>`<div class="card"><span class="drag-handle">⠿</span><div class="card-title">📅 Upcoming earnings ${tipIcon('Earnings dates for stocks in your portfolio in the next 30 days.')}</div><div id="earningsWidget"><div class="muted" style="font-size:12px">Loading...</div></div></div>`},
     news:{wide:true,enabled:()=>widgetConfig.news,html:()=>`<div class="card"><span class="drag-handle">⠿</span><div class="card-title">📰 News for your stocks ${tipIcon('Latest news headlines for stocks in your portfolio.')}</div><div id="newsWidget"><div class="muted" style="font-size:12px">Loading news...</div></div></div>`},
     forecast:{wide:true,enabled:()=>widgetConfig.forecast,html:()=>`<div class="card"><span class="drag-handle">⠿</span><div class="card-title">🔮 Forecast signals ${tipIcon('Technical signals based on price momentum and trend. Not financial advice.')}</div><div id="forecastWidget">${renderForecast()}</div></div>`},
-,
     btcLeading:{wide:true,enabled:()=>widgetConfig.btcLeading!==false,html:()=>`<div class="btc-widget"><span class="drag-handle">⠿</span><div class="card-title" style="color:#f7931a">₿ BTC Leading Indicator ${tipIcon('Uses Bitcoin price action as a leading indicator to predict short-term direction of BTC-correlated stocks like STRIVE.')}</div><div id="btcWidgetInner"><div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:.75rem"><select id="btcStock" style="padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px;outline:none;cursor:pointer"><option value="MSTR">MSTR (MicroStrategy)</option><option value="COIN">COIN (Coinbase)</option>${positions.filter(p=>['MSTR','COIN','RIOT','MARA','CLSK','CIFR','BTBT','HUT','CORZ','IREN'].includes(p.ticker)||p.ticker==='STRIVE').map(p=>`<option value="${esc(p.ticker)}" selected>${esc(p.ticker)}</option>`).join('')}${watchlist.filter(w=>['MSTR','COIN','RIOT','MARA','STRIVE'].includes(w.ticker)).map(w=>`<option value="${esc(w.ticker)}">${esc(w.ticker)}</option>`).join('')}</select><button onclick="runBTCAnalysis()" style="padding:6px 14px;border-radius:var(--radius);border:1px solid rgba(247,147,26,.4);background:rgba(247,147,26,.1);color:#f7931a;font-size:12px;font-weight:700;cursor:pointer">⚡ Analyse</button></div><div id="btcResult" style="font-size:12px;color:var(--text3)">Select a stock and tap Analyse to run the BTC correlation analysis.</div></div></div>`},
     activity:{wide:true,enabled:()=>widgetConfig.activity,html:()=>`<div class="card interactive" onclick="openWidgetPopup('activity')"><span class="drag-handle">⠿</span><div class="card-title">🕐 Recent activity</div>${notifications.slice(0,5).map(n=>{const icons={alert:'🔔',gain:'📈',loss:'📉',move:'⚡',scanner:'🔭'};return`<div style="padding:7px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:flex-start"><span style="font-size:16px">${icons[n.type]||'📌'}</span><div><div style="font-size:12px;font-weight:600">${esc(n.title)}</div><div style="font-size:11px;color:var(--text3)">${timeAgo(n.created_at)}</div></div></div>`;}).join('')||'<div class="muted" style="font-size:12px">Activity will appear here as you use the app.</div>'}</div>`}
   };
