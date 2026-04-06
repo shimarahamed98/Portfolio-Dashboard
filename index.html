@@ -2097,261 +2097,196 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTerminal();});
 async function loadTerminalAnalysis(){
   const s=terminalSignal;
   const body=document.getElementById('tm-body');
-  body.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text3)"><div style="font-size:32px;margin-bottom:1rem">⏳</div><div style="font-size:14px">Fetching live data for ${s.ticker}...</div></div>`;
+  body.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text3)"><div style="font-size:32px;margin-bottom:1rem">⏳</div><div style="font-size:14px">Fetching live data for '+s.ticker+'...</div></div>';
 
-  // Fetch candle data from Finnhub
   const tfMap={'1W':{res:'D',from:Math.floor((Date.now()-7*86400000)/1000)},'1M':{res:'D',from:Math.floor((Date.now()-30*86400000)/1000)},'3M':{res:'D',from:Math.floor((Date.now()-90*86400000)/1000)}};
-  const tf=tfMap[terminalTF];
+  const tfCfg=tfMap[terminalTF];
   const to=Math.floor(Date.now()/1000);
 
   let candles=[];
   if(apiKey){
     try{
-      const r=await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(s.ticker)}&resolution=${tf.res}&from=${tf.from}&to=${to}&token=${apiKey}`);
+      const r=await fetch('https://finnhub.io/api/v1/stock/candle?symbol='+encodeURIComponent(s.ticker)+'&resolution='+tfCfg.res+'&from='+tfCfg.from+'&to='+to+'&token='+apiKey);
       const d=await r.json();
       if(d&&d.s==='ok'&&d.c&&d.c.length>0){
-        candles=d.t.map((_,i)=>({t:d.t[i],o:d.o[i],h:d.h[i],l:d.l[i],c:d.c[i],v:d.v[i]}));
+        candles=d.t.map(function(_,i){return{t:d.t[i],o:d.o[i],h:d.h[i],l:d.l[i],c:d.c[i],v:d.v[i]};});
       }
-    }catch(e){console.log('Candle fetch error:',e);}
+    }catch(e){console.log('Candle fetch:',e);}
   }
   terminalCandles=candles;
 
-  // Calculate RSI(14)
-  function calcRSI(closes,period=14){
-    if(closes.length<period+1)return closes.map(()=>50);
-    const rsi=new Array(period).fill(null);
-    let gains=0,losses=0;
-    for(let i=1;i<=period;i++){const d=closes[i]-closes[i-1];if(d>0)gains+=d;else losses-=d;}
-    let avgGain=gains/period,avgLoss=losses/period;
+  // RSI
+  function calcRSI(closes,period){
+    period=period||14;
+    if(closes.length<period+1)return closes.map(function(){return 50;});
+    var rsi=[];for(var x=0;x<period;x++)rsi.push(null);
+    var gains=0,losses=0;
+    for(var i=1;i<=period;i++){var dd=closes[i]-closes[i-1];if(dd>0)gains+=dd;else losses-=dd;}
+    var avgGain=gains/period,avgLoss=losses/period;
     rsi.push(avgLoss===0?100:100-(100/(1+avgGain/avgLoss)));
-    for(let i=period+1;i<closes.length;i++){
-      const d=closes[i]-closes[i-1];
-      const g=d>0?d:0,l=d<0?-d:0;
+    for(var i=period+1;i<closes.length;i++){
+      var dd=closes[i]-closes[i-1];
+      var g=dd>0?dd:0,l=dd<0?-dd:0;
       avgGain=(avgGain*(period-1)+g)/period;
       avgLoss=(avgLoss*(period-1)+l)/period;
       rsi.push(avgLoss===0?100:100-(100/(1+avgGain/avgLoss)));
     }
     return rsi;
   }
-
-  // Calculate MACD
   function calcEMA(data,period){
-    const k=2/(period+1);const ema=[data[0]];
-    for(let i=1;i<data.length;i++)ema.push(data[i]*k+ema[i-1]*(1-k));
+    var k=2/(period+1),ema=[data[0]];
+    for(var i=1;i<data.length;i++)ema.push(data[i]*k+ema[i-1]*(1-k));
     return ema;
   }
   function calcMACD(closes){
     if(closes.length<26)return{macd:[],signal:[],hist:[]};
-    const ema12=calcEMA(closes,12),ema26=calcEMA(closes,26);
-    const macd=ema12.map((v,i)=>v-ema26[i]);
-    const signal=calcEMA(macd,9);
-    const hist=macd.map((v,i)=>v-signal[i]);
-    return{macd,signal,hist};
+    var ema12=calcEMA(closes,12),ema26=calcEMA(closes,26);
+    var macd=ema12.map(function(v,i){return v-ema26[i];});
+    var signal=calcEMA(macd,9);
+    var hist=macd.map(function(v,i){return v-signal[i];});
+    return{macd:macd,signal:signal,hist:hist};
   }
-
-  const closes=candles.map(c=>c.c);
-  const rsiVals=closes.length>15?calcRSI(closes):[];
-  const macdData=closes.length>26?calcMACD(closes):{macd:[],signal:[],hist:[]};
-  const latestRSI=rsiVals.length?rsiVals[rsiVals.length-1]:null;
-  const latestMACD=macdData.macd.length?macdData.macd[macdData.macd.length-1]:null;
-  const latestSignal=macdData.signal.length?macdData.signal[macdData.signal.length-1]:null;
-
-  // Detect candlestick pattern on last 2 candles
-  function detectPattern(candles){
-    if(candles.length<2)return null;
-    const last=candles[candles.length-1];
-    const prev=candles[candles.length-2];
-    const body=Math.abs(last.c-last.o);
-    const range=last.h-last.l;
-    const upperWick=last.h-Math.max(last.c,last.o);
-    const lowerWick=Math.min(last.c,last.o)-last.l;
-    if(body<range*0.1)return{name:'Doji',desc:'Indecision — buyers and sellers balanced. Direction unclear.',bullish:null};
-    if(lowerWick>body*2&&upperWick<body*0.3&&last.c>last.o)return{name:'Hammer',desc:'Buyers rejected the low strongly. Potential reversal upward.',bullish:true};
-    if(upperWick>body*2&&lowerWick<body*0.3&&last.c<last.o)return{name:'Shooting Star',desc:'Sellers rejected the high strongly. Potential reversal downward.',bullish:false};
-    if(last.c>last.o&&prev.c<prev.o&&last.c>prev.o&&last.o<prev.c)return{name:'Bullish Engulfing',desc:'Bulls completely overtook the previous candle. Strong reversal signal.',bullish:true};
-    if(last.c<last.o&&prev.c>prev.o&&last.c<prev.o&&last.o>prev.c)return{name:'Bearish Engulfing',desc:'Bears completely overtook the previous candle. Strong reversal downward.',bullish:false};
+  function detectPattern(cc){
+    if(cc.length<2)return null;
+    var last=cc[cc.length-1],prev=cc[cc.length-2];
+    var body=Math.abs(last.c-last.o),range=last.h-last.l;
+    if(range===0)return null;
+    var upper=last.h-Math.max(last.c,last.o),lower=Math.min(last.c,last.o)-last.l;
+    if(body<range*0.1)return{name:'Doji',desc:'Indecision — buyers and sellers balanced.',bullish:null};
+    if(lower>body*2&&upper<body*0.3&&last.c>last.o)return{name:'Hammer',desc:'Buyers rejected the low. Potential reversal upward.',bullish:true};
+    if(upper>body*2&&lower<body*0.3&&last.c<last.o)return{name:'Shooting Star',desc:'Sellers rejected the high. Potential reversal downward.',bullish:false};
+    if(last.c>last.o&&prev.c<prev.o&&last.c>prev.o&&last.o<prev.c)return{name:'Bullish Engulfing',desc:'Bulls overtook the previous candle. Strong reversal signal.',bullish:true};
+    if(last.c<last.o&&prev.c>prev.o&&last.c<prev.o&&last.o>prev.c)return{name:'Bearish Engulfing',desc:'Bears overtook the previous candle. Strong reversal downward.',bullish:false};
     if(last.c>last.o&&body>range*0.6)return{name:'Strong Bullish Candle',desc:'Clean buying pressure. Buyers in control.',bullish:true};
     if(last.c<last.o&&body>range*0.6)return{name:'Strong Bearish Candle',desc:'Clean selling pressure. Sellers in control.',bullish:false};
-    return{name:'Mixed Candle',desc:'No clear pattern. Wait for more confirmation.',bullish:null};
+    return{name:'Mixed Candle',desc:'No clear pattern. Wait for confirmation.',bullish:null};
   }
 
-  const pattern=detectPattern(candles);
+  var closes=candles.map(function(c){return c.c;});
+  var rsiVals=closes.length>15?calcRSI(closes):[];
+  var macdData=closes.length>26?calcMACD(closes):{macd:[],signal:[],hist:[]};
+  var latestRSI=rsiVals.length?rsiVals[rsiVals.length-1]:null;
+  var latestMACD=macdData.macd.length?macdData.macd[macdData.macd.length-1]:null;
+  var latestSig=macdData.signal.length?macdData.signal[macdData.signal.length-1]:null;
+  var pattern=detectPattern(candles);
 
-  // ── GENERATE ANALYSIS ──
-  const {scenarios,probabilities,practicalAdvice}=generateDeepAnalysis(s,latestRSI,latestMACD,latestSignal,pattern,candles);
+  var analysis=generateDeepAnalysis(s,latestRSI,latestMACD,latestSig,pattern,candles);
+  var scenarios=analysis.scenarios,probabilities=analysis.probabilities,practicalAdvice=analysis.practicalAdvice;
 
-  // Look up position data for this ticker
-  const ownedPos=positions.find(p=>p.ticker===s.ticker);
-  const watchPos=watchlist.find(w=>w.ticker===s.ticker);
-  const myData=ownedPos||watchPos;
+  var ownedPos=positions.find(function(p){return p.ticker===s.ticker;});
+  var watchPos=watchlist.find(function(w){return w.ticker===s.ticker;});
+  var myData=ownedPos||watchPos;
 
-  // ── BUILD LAYOUT ──
-  Object.values(terminalCharts).forEach(c=>{try{c.destroy();}catch(e){}});
+  Object.values(terminalCharts).forEach(function(c){try{c.destroy();}catch(e){}});
   terminalCharts={};
 
-  try{
-  body.innerHTML=`
-    <!-- CHART SECTION (full width) -->
-    <div class="tm-section tm-section-full">
-      <div class="tm-section-title">📊 Live Chart · ${s.ticker}
-        <div class="tf-pills" style="margin-left:auto;margin-bottom:0">
-          ${['1W','1M','3M'].map(tf=>`<div class="tf-pill${terminalTF===tf?' active':''}" onclick="switchTerminalTF('${tf}')">${tf}</div>`).join('')}
-        </div>
-      </div>
-      ${!candles.length?`<div style="text-align:center;padding:2rem;color:var(--text3)"><div style="font-size:24px;margin-bottom:.5rem">📡</div><div>Add your Finnhub API key in Settings to load live chart data.</div></div>`:`
-      <div class="tm-chart-wrap"><canvas id="tm-candle-chart"></canvas></div>
-      <div class="tm-rsi-wrap"><canvas id="tm-rsi-chart"></canvas></div>
-      <div class="tm-vol-wrap"><canvas id="tm-vol-chart"></canvas></div>
-      <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.75rem">
-        ${latestRSI!==null?`<div style="font-size:12px"><span style="color:var(--text3)">RSI(14): </span><span style="font-weight:700;color:${latestRSI>70?'var(--red)':latestRSI<30?'var(--green)':'var(--text)'}">${latestRSI.toFixed(1)} — ${latestRSI>70?'Overbought':latestRSI<30?'Oversold':'Neutral'}</span></div>`:''}
-        ${latestMACD!==null?`<div style="font-size:12px"><span style="color:var(--text3)">MACD: </span><span style="font-weight:700;color:${latestMACD>latestSignal?'var(--green)':'var(--red)'}">${latestMACD>latestSignal?'Bullish cross':'Bearish cross'}</span></div>`:''}
-        ${pattern?`<div style="font-size:12px"><span style="color:var(--text3)">Pattern: </span><span style="font-weight:700;color:${pattern.bullish===true?'var(--green)':pattern.bullish===false?'var(--red)':'var(--yellow)'}">${pattern.name}</span></div>`:''}
-      </div>`}
-    </div>
+  // Build DOM safely — no nested template literals
+  body.innerHTML='';
 
-    <!-- TECHNICAL READING -->
-    <div class="tm-section">
-      <div class="tm-section-title">🔬 Technical Reading</div>
-      ${pattern?`<div style="background:rgba(255,255,255,.04);border-radius:8px;padding:.75rem;margin-bottom:.75rem">
-        <div style="font-size:11px;font-weight:800;color:${pattern.bullish===true?'var(--green)':pattern.bullish===false?'var(--red)':'var(--yellow)'};text-transform:uppercase;margin-bottom:3px">${pattern.name}</div>
-        <div style="font-size:12px;color:var(--text2)">${pattern.desc}</div>
-      </div>`:''}
-      ${latestRSI!==null?`<div style="margin-bottom:.65rem">
-        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="color:var(--text3);font-weight:700">RSI(14)</span><span style="font-weight:800;color:${latestRSI>70?'var(--red)':latestRSI<30?'var(--green)':'var(--text)'}">${latestRSI.toFixed(1)}</span></div>
-        <div style="height:6px;background:linear-gradient(to right,var(--green),var(--yellow),var(--red));border-radius:3px;position:relative">
-          <div style="position:absolute;top:-3px;width:3px;height:12px;background:white;border-radius:2px;left:${Math.min(98,Math.max(2,latestRSI))}%;transform:translateX(-50%);box-shadow:0 0 4px rgba(0,0,0,.5)"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:2px"><span>Oversold (30)</span><span>Overbought (70)</span></div>
-        <div style="font-size:12px;color:var(--text2);margin-top:6px">${latestRSI>80?`RSI at ${latestRSI.toFixed(0)} — extremely overbought. High probability of pullback in next 1–5 sessions.`:latestRSI>70?`RSI at ${latestRSI.toFixed(0)} — overbought. Momentum strong but exhaustion risk growing.`:latestRSI<20?`RSI at ${latestRSI.toFixed(0)} — extremely oversold. High probability of bounce but may not be immediate.`:latestRSI<30?`RSI at ${latestRSI.toFixed(0)} — oversold. Watch for reversal candle as entry signal.`:`RSI at ${latestRSI.toFixed(0)} — neutral zone. No extreme reading.`}</div>
-      </div>`:''}
-      ${latestMACD!==null?`<div style="background:rgba(255,255,255,.03);border-radius:8px;padding:.75rem">
-        <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;margin-bottom:4px">MACD</div>
-        <div style="font-size:12px;color:${latestMACD>latestSignal?'var(--green)':'var(--red)'};font-weight:700;margin-bottom:3px">${latestMACD>latestSignal?'✓ Bullish — MACD above signal line':'✗ Bearish — MACD below signal line'}</div>
-        <div style="font-size:12px;color:var(--text2)">${latestMACD>latestSignal?'Momentum trending upward. Bulls in control of short-term direction.':'Momentum trending downward. Bears in control of short-term direction.'}</div>
-      </div>`:''}
-      ${myData&&(myData.support||myData.resistance)?`<div style="margin-top:.75rem;background:rgba(255,255,255,.03);border-radius:8px;padding:.75rem">
-        <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;margin-bottom:6px">Your Key Levels</div>
-        ${myData.support?`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text3)">Support</span><span style="color:var(--blue);font-weight:700">$${parseFloat(myData.support).toFixed(2)} <span style="color:var(--text3);font-weight:400">(${(((s.price-parseFloat(myData.support))/parseFloat(myData.support))*100).toFixed(1)}% away)</span></span></div>`:''}
-        ${myData.resistance?`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text3)">Resistance</span><span style="color:var(--yellow);font-weight:700">$${parseFloat(myData.resistance).toFixed(2)} <span style="color:var(--text3);font-weight:400">(${(((parseFloat(myData.resistance)-s.price)/s.price)*100).toFixed(1)}% away)</span></span></div>`:''}
-        ${myData.stopLoss?`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text3)">Stop Loss</span><span style="color:var(--red);font-weight:700">$${parseFloat(myData.stopLoss).toFixed(2)}</span></div>`:''}
-      </div>`:''}
-    </div>
-
-    <!-- SCENARIOS -->
-    <div class="tm-section">
-      <div class="tm-section-title">🎯 What smart traders are watching for</div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:1rem">with <strong style="color:var(--text)">${s.ticker}</strong> right now</div>
-      ${scenarios.map((sc,i)=>`<div class="scenario-card ${sc.type}">
-        <div class="sc-label" style="color:${sc.type==='good'?'var(--green)':sc.type==='bad'?'var(--red)':'var(--yellow)'}">Scenario ${String.fromCharCode(65+i)} — ${sc.title}</div>
-        <ul class="sc-steps">${sc.steps.map(st=>`<li>${esc(st)}</li>`).join('')}</ul>
-        <div class="sc-outcome">${sc.outcome}</div>
-        <div style="margin-top:6px;font-size:11px;color:var(--text3);font-style:italic">${esc(sc.probability)}% probability</div>
-      </div>`).join('')}
-      <div style="font-size:12px;color:var(--text3);text-align:center;margin-top:.5rem;font-style:italic">Missing a trade is cheaper than a bad trade.</div>
-    </div>
-
-    <!-- PROBABILITY BARS (full width) -->
-    <div class="tm-section tm-section-full">
-      <div class="tm-section-title">📈 Outcome Probabilities</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem">
-        ${probabilities.map(p=>`<div class="prob-bar-wrap">
-          <div class="prob-bar-label"><span style="color:var(--text2);font-size:12px;font-weight:600">${esc(p.label)}</span><span style="font-weight:800;color:${p.color};font-size:13px">${p.pct}%</span></div>
-          <div class="prob-bar-track"><div class="prob-bar-fill" style="width:${p.pct}%;background:${p.color}"></div></div>
-          <div style="font-size:11px;color:var(--text3);margin-top:3px">${esc(p.note)}</div>
-        </div>`).join('')}
-      </div>
-    </div>
-
-    <!-- PRACTICAL ADVICE (full width) -->
-    <div class="tm-section tm-section-full" style="background:rgba(124,111,255,.06);border-color:rgba(124,111,255,.25)">
-      <div class="tm-section-title" style="color:var(--accent2)">⭐ My Practical Advice — If This Was My Money</div>
-      ${practicalAdvice.map(block=>`
-        <div class="advice-block" style="background:${block.bg||'rgba(124,111,255,.08)'};border-color:${block.borderColor||'rgba(124,111,255,.2)'}">
-          <div style="font-size:13px;font-weight:800;margin-bottom:8px;color:${block.titleColor||'var(--accent2)'}">${block.title}</div>
-          <ul class="action-list">
-            ${block.actions.map(a=>`<li><span style="font-size:16px;flex-shrink:0">${a.icon}</span><span style="color:${a.color||'var(--text)'}">${esc(a.text)}</span></li>`).join('')}
-          </ul>
-        </div>`).join('')}
-      <div style="text-align:center;font-size:13px;color:var(--text3);margin-top:.75rem;font-style:italic;border-top:1px solid rgba(255,255,255,.06);padding-top:.75rem">This analysis is based on live price data, technical indicators, and your trade plan data. Not financial advice.</div>
-    </div>
-  `;
-
-  // Render charts if we have candle data
+  // ── CHART SECTION ──
+  var chartDiv=document.createElement('div');
+  chartDiv.className='tm-section tm-section-full';
+  var tfPills=['1W','1M','3M'].map(function(t){return '<div class="tf-pill'+(terminalTF===t?' active':'')+'" onclick="switchTerminalTF(\''+t+'\')">'+t+'</div>';}).join('');
+  var chartInner='<div class="tm-section-title">📊 Live Chart · '+esc(s.ticker)+'<div class="tf-pills" style="margin-left:auto;margin-bottom:0">'+tfPills+'</div></div>';
   if(candles.length){
-    setTimeout(()=>renderTerminalCharts(candles,rsiVals,macdData,myData),80);
+    chartInner+='<div class="tm-chart-wrap"><canvas id="tm-candle-chart"></canvas></div>';
+    chartInner+='<div class="tm-rsi-wrap"><canvas id="tm-rsi-chart"></canvas></div>';
+    chartInner+='<div class="tm-vol-wrap"><canvas id="tm-vol-chart"></canvas></div>';
+    if(latestRSI!==null)chartInner+='<div style="font-size:12px;margin-top:.5rem"><span style="color:var(--text3)">RSI(14): </span><span style="font-weight:700;color:'+(latestRSI>70?'var(--red)':latestRSI<30?'var(--green)':'var(--text)')+'">'+latestRSI.toFixed(1)+' — '+(latestRSI>70?'Overbought':latestRSI<30?'Oversold':'Neutral')+'</span></div>';
+    if(latestMACD!==null)chartInner+='<div style="font-size:12px;margin-top:4px"><span style="color:var(--text3)">MACD: </span><span style="font-weight:700;color:'+(latestMACD>latestSig?'var(--green)':'var(--red)')+'">'+( latestMACD>latestSig?'Bullish cross':'Bearish cross')+'</span></div>';
+    if(pattern)chartInner+='<div style="font-size:12px;margin-top:4px"><span style="color:var(--text3)">Pattern: </span><span style="font-weight:700;color:'+(pattern.bullish===true?'var(--green)':pattern.bullish===false?'var(--red)':'var(--yellow)')+'">'+esc(pattern.name)+'</span></div>';
+  } else {
+    chartInner+='<div style="text-align:center;padding:1.5rem;background:rgba(255,255,255,.03);border-radius:10px;margin-top:.5rem">';
+    chartInner+='<div style="font-size:28px;margin-bottom:.5rem">📡</div>';
+    chartInner+='<div style="color:var(--text3);font-size:13px">'+(apiKey?'No chart data for '+esc(s.ticker)+' right now — market may be closed or try a different timeframe.':'Add your Finnhub API key in Settings to load live charts.')+'</div></div>';
   }
-  }catch(err){
-    console.error('Terminal render error:',err);
-    body.innerHTML=buildTerminalFallback(s,scenarios,probabilities,practicalAdvice,myData,latestRSI,latestMACD,latestSignal,pattern);
-    if(candles.length)setTimeout(()=>renderTerminalCharts(candles,rsiVals,macdData,myData),80);
+  // RSI bar (always show if we have data, even without chart)
+  if(latestRSI!==null&&!candles.length){
+    chartInner+='<div style="margin-top:1rem;padding:.75rem;background:rgba(255,255,255,.03);border-radius:8px">';
+    chartInner+='<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="color:var(--text3);font-weight:700">RSI(14)</span><span style="font-weight:800;color:'+(latestRSI>70?'var(--red)':latestRSI<30?'var(--green)':'var(--text)')+'">'+latestRSI.toFixed(1)+'</span></div>';
+    chartInner+='<div style="height:6px;background:linear-gradient(to right,var(--green),var(--yellow),var(--red));border-radius:3px;position:relative"><div style="position:absolute;top:-3px;width:3px;height:12px;background:white;border-radius:2px;left:'+Math.min(98,Math.max(2,latestRSI))+'%;transform:translateX(-50%)"></div></div></div>';
   }
-}
+  chartDiv.innerHTML=chartInner;
+  body.appendChild(chartDiv);
 
-function buildTerminalFallback(s,scenarios,probabilities,practicalAdvice,myData,latestRSI,latestMACD,latestSignal,pattern){
-  // Safe fallback renderer using DOM manipulation instead of template literal
-  const wrap=document.createElement('div');
-  wrap.style.cssText='grid-column:1/-1;display:flex;flex-direction:column;gap:1.25rem';
-
-  // Chart placeholder
-  const chartSec=document.createElement('div');
-  chartSec.className='tm-section tm-section-full';
-  const tfHtml=['1W','1M','3M'].map(tf=>`<div class="tf-pill${terminalTF===tf?' active':''}" onclick="switchTerminalTF('${tf}')">${tf}</div>`).join('');
-  chartSec.innerHTML=`<div class="tm-section-title">📊 Live Chart · ${esc(s.ticker)}<div class="tf-pills" style="margin-left:auto;margin-bottom:0">${tfHtml}</div></div>`
-    +(candles&&candles.length
-      ?`<div class="tm-chart-wrap"><canvas id="tm-candle-chart"></canvas></div><div class="tm-rsi-wrap"><canvas id="tm-rsi-chart"></canvas></div><div class="tm-vol-wrap"><canvas id="tm-vol-chart"></canvas></div>`
-      :`<div style="text-align:center;padding:2rem;background:rgba(255,255,255,.03);border-radius:10px"><div style="font-size:28px;margin-bottom:.5rem">📡</div><div style="color:var(--text3);font-size:13px">${apiKey?'No candle data returned for '+esc(s.ticker)+' — market may be closed or this symbol uses a different format.':'Add your Finnhub API key in Settings to load live charts.'}</div></div>`);
-
-  // RSI indicator strip (even without chart)
+  // ── TECHNICAL READING ──
+  var techDiv=document.createElement('div');
+  techDiv.className='tm-section';
+  var techInner='<div class="tm-section-title">🔬 Technical Reading</div>';
+  if(pattern){
+    var pc=pattern.bullish===true?'var(--green)':pattern.bullish===false?'var(--red)':'var(--yellow)';
+    techInner+='<div style="background:rgba(255,255,255,.04);border-radius:8px;padding:.75rem;margin-bottom:.75rem"><div style="font-size:11px;font-weight:800;color:'+pc+';text-transform:uppercase;margin-bottom:3px">'+esc(pattern.name)+'</div><div style="font-size:12px;color:var(--text2)">'+esc(pattern.desc)+'</div></div>';
+  }
   if(latestRSI!==null){
-    chartSec.innerHTML+=`<div style="margin-top:1rem;padding:.75rem;background:rgba(255,255,255,.03);border-radius:8px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="color:var(--text3);font-weight:700">RSI(14)</span><span style="font-weight:800;color:${latestRSI>70?'var(--red)':latestRSI<30?'var(--green)':'var(--text)'}">${latestRSI.toFixed(1)} — ${latestRSI>70?'Overbought':latestRSI<30?'Oversold':'Neutral'}</span></div><div style="height:6px;background:linear-gradient(to right,var(--green),var(--yellow),var(--red));border-radius:3px;position:relative"><div style="position:absolute;top:-3px;width:3px;height:12px;background:white;border-radius:2px;left:${Math.min(98,Math.max(2,latestRSI))}%;transform:translateX(-50%)"></div></div><div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:2px"><span>Oversold 30</span><span>Overbought 70</span></div></div>`;
+    var rc=latestRSI>70?'var(--red)':latestRSI<30?'var(--green)':'var(--text)';
+    var rtxt=latestRSI>80?'Extremely overbought — high pullback risk.':latestRSI>70?'Overbought — momentum strong but exhaustion growing.':latestRSI<20?'Extremely oversold — bounce likely but not immediate.':latestRSI<30?'Oversold — watch for reversal candle as entry signal.':'Neutral zone — no extreme reading.';
+    techInner+='<div style="margin-bottom:.75rem"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="color:var(--text3);font-weight:700">RSI(14)</span><span style="font-weight:800;color:'+rc+'">'+latestRSI.toFixed(1)+'</span></div><div style="height:6px;background:linear-gradient(to right,var(--green),var(--yellow),var(--red));border-radius:3px;position:relative"><div style="position:absolute;top:-3px;width:3px;height:12px;background:white;border-radius:2px;left:'+Math.min(98,Math.max(2,latestRSI))+'%;transform:translateX(-50%)"></div></div><div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:2px"><span>Oversold 30</span><span>Overbought 70</span></div><div style="font-size:12px;color:var(--text2);margin-top:6px">'+rtxt+'</div></div>';
   }
-  wrap.appendChild(chartSec);
-
-  // Pattern + MACD
-  if(pattern||latestMACD!==null){
-    const techSec=document.createElement('div');
-    techSec.className='tm-section';
-    let techHtml='<div class="tm-section-title">🔬 Technical Reading</div>';
-    if(pattern)techHtml+=`<div style="background:rgba(255,255,255,.04);border-radius:8px;padding:.75rem;margin-bottom:.75rem"><div style="font-size:11px;font-weight:800;color:${pattern.bullish===true?'var(--green)':pattern.bullish===false?'var(--red)':'var(--yellow)'};text-transform:uppercase;margin-bottom:3px">${esc(pattern.name)}</div><div style="font-size:12px;color:var(--text2)">${esc(pattern.desc)}</div></div>`;
-    if(latestMACD!==null)techHtml+=`<div style="background:rgba(255,255,255,.03);border-radius:8px;padding:.75rem"><div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;margin-bottom:4px">MACD</div><div style="font-size:12px;color:${latestMACD>latestSignal?'var(--green)':'var(--red)'};font-weight:700">${latestMACD>latestSignal?'✓ Bullish — MACD above signal line':'✗ Bearish — MACD below signal line'}</div></div>`;
-    techSec.innerHTML=techHtml;
-    wrap.appendChild(techSec);
+  if(latestMACD!==null){
+    var mc=latestMACD>latestSig?'var(--green)':'var(--red)';
+    var mtxt=latestMACD>latestSig?'✓ Bullish — MACD above signal. Momentum trending upward.':'✗ Bearish — MACD below signal. Momentum trending downward.';
+    techInner+='<div style="background:rgba(255,255,255,.03);border-radius:8px;padding:.75rem"><div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;margin-bottom:4px">MACD</div><div style="font-size:12px;color:'+mc+';font-weight:700">'+mtxt+'</div></div>';
   }
-
-  // Scenarios
-  if(scenarios&&scenarios.length){
-    const scSec=document.createElement('div');
-    scSec.className='tm-section';
-    scSec.innerHTML='<div class="tm-section-title">🎯 What smart traders are watching for</div>'
-      +`<div style="font-size:12px;color:var(--text3);margin-bottom:1rem">with <strong style="color:var(--text)">${esc(s.ticker)}</strong> right now</div>`
-      +scenarios.map((sc,i)=>`<div class="scenario-card ${sc.type}"><div class="sc-label" style="color:${sc.type==='good'?'var(--green)':sc.type==='bad'?'var(--red)':'var(--yellow)'}">Scenario ${String.fromCharCode(65+i)} — ${esc(sc.title)}</div><ul class="sc-steps">${sc.steps.map(st=>`<li>${esc(st)}</li>`).join('')}</ul><div class="sc-outcome">${sc.outcome}</div><div style="margin-top:6px;font-size:11px;color:var(--text3);font-style:italic">${sc.probability}% probability</div></div>`).join('')
-      +`<div style="font-size:12px;color:var(--text3);text-align:center;margin-top:.5rem;font-style:italic">Missing a trade is cheaper than a bad trade.</div>`;
-    wrap.appendChild(scSec);
+  if(myData&&(myData.support||myData.resistance||myData.stopLoss)){
+    techInner+='<div style="margin-top:.75rem;background:rgba(255,255,255,.03);border-radius:8px;padding:.75rem"><div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;margin-bottom:6px">Your Key Levels</div>';
+    if(myData.support){var sv=parseFloat(myData.support);techInner+='<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text3)">Support</span><span style="color:var(--blue);font-weight:700">$'+sv.toFixed(2)+' <span style="color:var(--text3);font-weight:400">('+((s.price-sv)/sv*100).toFixed(1)+'% away)</span></span></div>';}
+    if(myData.resistance){var rv=parseFloat(myData.resistance);techInner+='<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text3)">Resistance</span><span style="color:var(--yellow);font-weight:700">$'+rv.toFixed(2)+' <span style="color:var(--text3);font-weight:400">('+((rv-s.price)/s.price*100).toFixed(1)+'% away)</span></span></div>';}
+    if(myData.stopLoss){var slv=parseFloat(myData.stopLoss);techInner+='<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--text3)">Stop Loss</span><span style="color:var(--red);font-weight:700">$'+slv.toFixed(2)+'</span></div>';}
+    techInner+='</div>';
   }
-
-  // Probabilities
-  if(probabilities&&probabilities.length){
-    const probSec=document.createElement('div');
-    probSec.className='tm-section tm-section-full';
-    probSec.innerHTML='<div class="tm-section-title">📈 Outcome Probabilities</div>'
-      +`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem">`
-      +probabilities.map(p=>`<div class="prob-bar-wrap"><div class="prob-bar-label"><span style="color:var(--text2);font-size:12px;font-weight:600">${esc(p.label)}</span><span style="font-weight:800;color:${p.color};font-size:13px">${p.pct}%</span></div><div class="prob-bar-track"><div class="prob-bar-fill" style="width:${p.pct}%;background:${p.color}"></div></div><div style="font-size:11px;color:var(--text3);margin-top:3px">${esc(p.note)}</div></div>`).join('')
-      +'</div>';
-    wrap.appendChild(probSec);
+  if(!pattern&&latestRSI===null&&latestMACD===null&&!myData){
+    techInner+='<div style="color:var(--text3);font-size:13px;padding:1rem 0">No technical data available. Add support, resistance, and stop loss to your position for deeper analysis.</div>';
   }
+  techDiv.innerHTML=techInner;
+  body.appendChild(techDiv);
 
-  // Practical advice
-  if(practicalAdvice&&practicalAdvice.length){
-    const advSec=document.createElement('div');
-    advSec.className='tm-section tm-section-full';
-    advSec.style.cssText='background:rgba(124,111,255,.06);border-color:rgba(124,111,255,.25)';
-    advSec.innerHTML='<div class="tm-section-title" style="color:var(--accent2)">⭐ My Practical Advice — If This Was My Money</div>'
-      +practicalAdvice.map(block=>`<div class="advice-block" style="background:${block.bg||'rgba(124,111,255,.08)'};border-color:${block.borderColor||'rgba(124,111,255,.2)'}"><div style="font-size:13px;font-weight:800;margin-bottom:8px;color:${block.titleColor||'var(--accent2)'}">${block.title}</div><ul class="action-list">${block.actions.map(a=>`<li><span style="font-size:16px;flex-shrink:0">${a.icon}</span><span style="color:${a.color||'var(--text)'}">${esc(a.text)}</span></li>`).join('')}</ul></div>`).join('')
-      +`<div style="text-align:center;font-size:12px;color:var(--text3);margin-top:.75rem;padding-top:.75rem;border-top:1px solid rgba(255,255,255,.06);font-style:italic">Analysis based on live price data, technical indicators, and your trade plan. Not financial advice.</div>`;
-    wrap.appendChild(advSec);
+  // ── SCENARIOS ──
+  var scDiv=document.createElement('div');
+  scDiv.className='tm-section';
+  var scInner='<div class="tm-section-title">🎯 What smart traders are watching for</div>';
+  scInner+='<div style="font-size:12px;color:var(--text3);margin-bottom:1rem">with <strong style="color:var(--text)">'+esc(s.ticker)+'</strong> right now</div>';
+  scenarios.forEach(function(sc,i){
+    var scColor=sc.type==='good'?'var(--green)':sc.type==='bad'?'var(--red)':'var(--yellow)';
+    scInner+='<div class="scenario-card '+sc.type+'">';
+    scInner+='<div class="sc-label" style="color:'+scColor+'">Scenario '+String.fromCharCode(65+i)+' — '+esc(sc.title)+'</div>';
+    scInner+='<ul class="sc-steps">'+sc.steps.map(function(st){return'<li>'+esc(st)+'</li>';}).join('')+'</ul>';
+    scInner+='<div class="sc-outcome">'+sc.outcome+'</div>';
+    scInner+='<div style="margin-top:6px;font-size:11px;color:var(--text3);font-style:italic">'+sc.probability+'% probability</div>';
+    scInner+='</div>';
+  });
+  scInner+='<div style="font-size:12px;color:var(--text3);text-align:center;margin-top:.5rem;font-style:italic">Missing a trade is cheaper than a bad trade.</div>';
+  scDiv.innerHTML=scInner;
+  body.appendChild(scDiv);
+
+  // ── PROBABILITIES ──
+  var probDiv=document.createElement('div');
+  probDiv.className='tm-section tm-section-full';
+  var probInner='<div class="tm-section-title">📈 Outcome Probabilities</div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem">';
+  probabilities.forEach(function(p){
+    probInner+='<div class="prob-bar-wrap"><div class="prob-bar-label"><span style="color:var(--text2);font-size:12px;font-weight:600">'+esc(p.label)+'</span><span style="font-weight:800;color:'+p.color+';font-size:13px">'+p.pct+'%</span></div><div class="prob-bar-track"><div class="prob-bar-fill" style="width:'+p.pct+'%;background:'+p.color+'"></div></div><div style="font-size:11px;color:var(--text3);margin-top:3px">'+esc(p.note)+'</div></div>';
+  });
+  probInner+='</div>';
+  probDiv.innerHTML=probInner;
+  body.appendChild(probDiv);
+
+  // ── PRACTICAL ADVICE ──
+  var advDiv=document.createElement('div');
+  advDiv.className='tm-section tm-section-full';
+  advDiv.style.cssText='background:rgba(124,111,255,.06);border-color:rgba(124,111,255,.25)';
+  var advInner='<div class="tm-section-title" style="color:var(--accent2)">⭐ My Practical Advice — If This Was My Money</div>';
+  practicalAdvice.forEach(function(block){
+    advInner+='<div class="advice-block" style="background:'+(block.bg||'rgba(124,111,255,.08)')+';border-color:'+(block.borderColor||'rgba(124,111,255,.2)')+'"><div style="font-size:13px;font-weight:800;margin-bottom:8px;color:'+(block.titleColor||'var(--accent2)')+'">'+block.title+'</div><ul class="action-list">';
+    block.actions.forEach(function(a){advInner+='<li><span style="font-size:16px;flex-shrink:0">'+a.icon+'</span><span style="color:'+(a.color||'var(--text)')+'">'+esc(a.text)+'</span></li>';});
+    advInner+='</ul></div>';
+  });
+  advInner+='<div style="text-align:center;font-size:12px;color:var(--text3);margin-top:.75rem;padding-top:.75rem;border-top:1px solid rgba(255,255,255,.06);font-style:italic">Analysis based on live data, technical indicators, and your trade plan. Not financial advice.</div>';
+  advDiv.innerHTML=advInner;
+  body.appendChild(advDiv);
+
+  // Render charts
+  if(candles.length){
+    setTimeout(function(){renderTerminalCharts(candles,rsiVals,macdData,myData);},100);
   }
-
-  return wrap.outerHTML;
 }
 
 function switchTerminalTF(tf){terminalTF=tf;loadTerminalAnalysis();}
