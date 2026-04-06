@@ -382,6 +382,35 @@ tr.leg-row.hidden{display:none}
 .forecast-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;margin-bottom:8px}
 .fc-signals{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
 .fc-signal{padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600}
+
+
+/* BTC WIDGET */
+.btc-widget{background:linear-gradient(135deg,rgba(247,147,26,.06),rgba(124,111,255,.04));border:1px solid rgba(247,147,26,.2);border-radius:var(--radius-lg);padding:1.1rem}
+.btc-step{border-left:2px solid;padding-left:.75rem;margin-bottom:.75rem}
+.btc-output{background:rgba(0,0,0,.3);border-radius:10px;padding:1rem;margin-top:.75rem}
+.btc-direction{font-size:22px;font-weight:800;margin-bottom:4px}
+
+/* AI ADVISOR */
+.ai-wrap{display:flex;flex-direction:column;height:calc(100vh - 120px);max-height:800px}
+.ai-messages{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1rem;padding:.5rem 0;scroll-behavior:smooth}
+.ai-msg{max-width:88%;line-height:1.65;font-size:13px;border-radius:14px;padding:12px 16px}
+.ai-msg.user{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:4px}
+.ai-msg.assistant{align-self:flex-start;background:var(--bg3);color:var(--text);border-bottom-left-radius:4px;border:1px solid var(--border)}
+.ai-msg.assistant strong{color:var(--accent2)}
+.ai-typing{align-self:flex-start;background:var(--bg3);border:1px solid var(--border);border-radius:14px;border-bottom-left-radius:4px;padding:12px 16px;display:flex;gap:4px;align-items:center}
+.ai-dot{width:6px;height:6px;border-radius:50%;background:var(--text3);animation:aiDot 1.2s infinite}
+.ai-dot:nth-child(2){animation-delay:.2s}
+.ai-dot:nth-child(3){animation-delay:.4s}
+@keyframes aiDot{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+.ai-input-row{display:flex;gap:8px;padding-top:.75rem;border-top:1px solid var(--border);margin-top:.5rem}
+.ai-input{flex:1;padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;outline:none;font-family:inherit;resize:none;min-height:44px;max-height:120px}
+.ai-input:focus{border-color:var(--accent)}
+.ai-send{padding:10px 18px;border-radius:12px;background:var(--accent);color:#fff;border:none;cursor:pointer;font-weight:700;font-size:13px;font-family:inherit;transition:opacity .15s;flex-shrink:0}
+.ai-send:disabled{opacity:.5;cursor:not-allowed}
+.ai-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:.75rem}
+.ai-chip{padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:12px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.ai-chip:hover{border-color:var(--accent);color:var(--accent2)}
+.ai-persona{display:flex;align-items:center;gap:10px;padding:.75rem 1rem;background:rgba(124,111,255,.06);border:1px solid rgba(124,111,255,.15);border-radius:12px;margin-bottom:1rem}
 /* TERMINAL MODAL */
 .terminal-modal{position:fixed;inset:0;background:rgba(0,0,0,.95);z-index:9000;display:flex;flex-direction:column;backdrop-filter:blur(12px);overflow:hidden}
 .terminal-modal.hidden{display:none}
@@ -457,6 +486,7 @@ tr.leg-row.hidden{display:none}
     <div class="nav-group">Insights</div>
     <div class="nav-item" id="nav-analytics" onclick="go('analytics')"><span class="nav-icon">📊</span><span class="nav-label">Analytics</span></div>
     <div class="nav-group">System</div>
+    <div class="nav-item" id="nav-ai" onclick="go('ai')"><span class="nav-icon">🤖</span><span class="nav-label">AI Advisor</span></div>
     <div class="nav-item" id="nav-settings" onclick="go('settings')"><span class="nav-icon">⚙️</span><span class="nav-label">Settings</span></div>
     <div class="sb-footer">v4.0 · Supabase sync</div>
   </div>
@@ -488,6 +518,7 @@ tr.leg-row.hidden{display:none}
       <div class="mob-tab" id="mob-portfolio" onclick="go('portfolio')"><span class="mob-tab-icon">💼</span>Stocks</div>
       <div class="mob-tab" id="mob-learn" onclick="go('learn')"><span class="mob-tab-icon">📚</span>Learn</div>
       <div class="mob-tab" id="mob-scanner" onclick="go('scanner')"><span class="mob-tab-icon">🔭</span>Scan</div>
+      <div class="mob-tab" id="mob-ai" onclick="go('ai')"><span class="mob-tab-icon">🤖</span>AI</div>
       <div class="mob-tab" id="mob-settings" onclick="go('settings')"><span class="mob-tab-icon">⚙️</span>Settings</div>
     </div>
   </div>
@@ -573,13 +604,13 @@ const T={pos:SB+'/rest/v1/positions',watch:SB+'/rest/v1/watchlist',notif:SB+'/re
 
 // ── STATE ──
 let positions=[],watchlist=[],priceCache={},notifications=[],stockNotes={};
-let apiKey='',page='dashboard',charts={};
+let apiKey='',openaiKey='',page='dashboard',charts={};
 let sbCollapsed=false,sidebarOpen=false;
 let currentDrawerPos=null,currentDrawerTab='overview';
 let currentLesson=null;
 let tickerTimer=null;
-let widgetConfig={fearGreed:true,winnersLosers:true,watchPreview:true,bestSector:true,earnings:true,lesson:true,news:true,movers:true,forecast:true,activity:true,signals:true};
-let widgetOrder=['winnersLosers','fearGreed','bestSector','watchPreview','movers','lesson','earnings','news','forecast','activity'];
+let widgetConfig={fearGreed:true,winnersLosers:true,watchPreview:true,bestSector:true,earnings:true,lesson:true,news:true,movers:true,forecast:true,activity:true,signals:true,btcLeading:true};
+let widgetOrder=['winnersLosers','btcLeading','fearGreed','bestSector','watchPreview','movers','lesson','earnings','news','forecast','activity'];
 let alertFiredCache=new Set();
 let learnStreak=0;
 let completedLessons=new Set();
@@ -818,6 +849,8 @@ async function init(){
   [positions,watchlist,notifications,priceCache,stockNotes]=await Promise.all([loadPositions(),loadWatch(),loadNotifications(),loadPrices(),loadNotes()]);
   const savedKey=await getSetting('finnhub_key');
   if(savedKey&&!apiKey){apiKey=savedKey;try{localStorage.setItem('ts_key',apiKey);}catch(e){}}
+  const savedOAKey=await getSetting('openai_key');
+  if(savedOAKey)openaiKey=savedOAKey;
   const savedWC=await getSetting('widget_config');if(savedWC)try{Object.assign(widgetConfig,JSON.parse(savedWC));}catch(e){}
   const savedOrder=await getSetting('widget_order');if(savedOrder)try{widgetOrder=JSON.parse(savedOrder);}catch(e){}
   learnStreak=await loadLearnStreak();
@@ -876,6 +909,7 @@ function go(p){
   else if(p==='notifications')renderNotifPage();
   else if(p==='analytics')renderAnalytics();
   else if(p==='settings')renderSettings();
+  else if(p==='ai')renderAIAdvisor();
   closeSB();
 }
 
@@ -1310,6 +1344,14 @@ function openWidgetSettings(){
 }
 function toggleWidget(key,el){widgetConfig[key]=!widgetConfig[key];el.classList.toggle('on',widgetConfig[key]);}
 async function saveWidgetConfig(){await setSetting('widget_config',JSON.stringify(widgetConfig));go('dashboard');}
+async function saveOpenAIKey(){
+  const k=(document.getElementById('oaIn')?.value||'').trim();
+  if(!k){toast('Paste your OpenAI key first','t-error');return;}
+  openaiKey=k;
+  await setSetting('openai_key',k);
+  toast('OpenAI key saved ✓','t-success');
+  document.getElementById('oaStatus').textContent='✓ OpenAI key saved — AI Advisor ready';
+}
 
 // ── PORTFOLIO ──
 let portfolioTab='owned';
@@ -2363,12 +2405,20 @@ async function loadTerminalAnalysis(){
 
     trigInner+='<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:1rem;border-top:1px solid rgba(255,255,255,.07)">';
 
-    // Set trigger alert button
-    trigInner+='<button onclick="setTriggerAlert(''+esc(s.ticker)+'',''+esc(s.type)+'','+parseFloat(trigger.price).toFixed(2)+',''+trigger.type+'')" style="flex:1;padding:10px 14px;border-radius:10px;border:1px solid '+trigColor+'55;background:'+trigColor+'11;color:'+trigColor+';font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px">'+(hasTrigger?'🔔 Trigger Set — Tap to Remove':'🔔 Set Trigger Alert')+'</button>';
+    // Set trigger alert button — use data attributes to avoid quote hell
+    var tBtn=document.createElement('button');
+    tBtn.setAttribute('data-ticker',s.ticker);
+    tBtn.setAttribute('data-sigtype',s.type);
+    tBtn.setAttribute('data-price',parseFloat(trigger.price).toFixed(2));
+    tBtn.setAttribute('data-direction',trigger.type);
+    tBtn.textContent=hasTrigger?'🔔 Trigger Set — Tap to Remove':'🔔 Set Trigger Alert';
+    tBtn.style.cssText='flex:1;padding:10px 14px;border-radius:10px;border:1px solid '+trigColor+'55;background:'+trigColor+'11;color:'+trigColor+';font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px';
+    tBtn.onclick=function(){setTriggerAlert(this.getAttribute('data-ticker'),this.getAttribute('data-sigtype'),parseFloat(this.getAttribute('data-price')),this.getAttribute('data-direction'));};
+    trigInner+='__TRIG_BTN_PLACEHOLDER__';
 
     // Watchlist button (only if not already owned/watched)
     if(!alreadyOwned&&!alreadyWatched){
-      trigInner+='<button onclick="addToWatchlistFromTerminal(''+esc(s.ticker)+'')" style="padding:10px 14px;border-radius:10px;border:1px solid rgba(124,111,255,.4);background:rgba(124,111,255,.1);color:var(--accent2);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s">+ Watchlist</button>';
+      trigInner+='<span id="wl-btn-placeholder"></span>';
     } else if(alreadyWatched){
       trigInner+='<div style="padding:10px 14px;border-radius:10px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.06);color:var(--green);font-size:12px;font-weight:600">✓ On Watchlist</div>';
     } else {
@@ -2380,8 +2430,30 @@ async function loadTerminalAnalysis(){
       trigInner+='<div style="margin-top:.75rem;padding:.65rem 1rem;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:8px;font-size:12px;color:var(--green)">🔔 Alert set for $'+hasTrigger.price.toFixed(2)+' — you will be notified when this price is reached. Fires once per day maximum.</div>';
     }
 
-    trigDiv.innerHTML=trigInner;
-    body.appendChild(trigDiv);
+    // Build the trigger section using DOM to avoid quote issues
+    var trigContainer=document.createElement('div');
+    trigContainer.className='tm-section tm-section-full';
+    trigContainer.style.cssText='background:rgba(6,182,212,.05);border-color:rgba(6,182,212,.25)';
+    // Replace placeholder with actual content minus buttons
+    var safeHtml=trigInner.replace('__TRIG_BTN_PLACEHOLDER__','').replace('<span id="wl-btn-placeholder"></span>','');
+    trigContainer.innerHTML=safeHtml;
+    // Find the flex div and append real buttons to it
+    var btnRow=trigContainer.querySelector('[style*="display:flex;gap:8px"]');
+    if(!btnRow){btnRow=document.createElement('div');btnRow.style.cssText='display:flex;gap:8px;flex-wrap:wrap;padding-top:1rem;border-top:1px solid rgba(255,255,255,.07)';trigContainer.appendChild(btnRow);}
+    btnRow.appendChild(tBtn);
+    if(!alreadyOwned&&!alreadyWatched){
+      var wBtn=document.createElement('button');
+      wBtn.textContent='+ Watchlist';
+      wBtn.style.cssText='padding:10px 14px;border-radius:10px;border:1px solid rgba(124,111,255,.4);background:rgba(124,111,255,.1);color:#a78bfa;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s';
+      wBtn.onclick=function(){addToWatchlistFromTerminal(s.ticker);};
+      btnRow.appendChild(wBtn);
+    } else {
+      var badge=document.createElement('div');
+      badge.style.cssText='padding:10px 14px;border-radius:10px;border:1px solid '+(alreadyOwned?'rgba(124,111,255,.3)':'rgba(34,197,94,.3)')+';background:'+(alreadyOwned?'rgba(124,111,255,.06)':'rgba(34,197,94,.06)')+';color:'+(alreadyOwned?'#a78bfa':'#22c55e')+';font-size:12px;font-weight:600';
+      badge.textContent=alreadyOwned?'✓ Owned':'✓ On Watchlist';
+      btnRow.appendChild(badge);
+    }
+    body.appendChild(trigContainer);
   }
 
   // Render charts
@@ -2439,72 +2511,85 @@ function addToWatchlistFromTerminal(ticker){
 function switchTerminalTF(tf){terminalTF=tf;loadTerminalAnalysis();}
 
 function renderTerminalCharts(candles,rsiVals,macdData,myData){
-  // Ensure canvases have explicit pixel dimensions
-  const cw=document.querySelector('.tm-chart-wrap');
-  const rw=document.querySelector('.tm-rsi-wrap');
-  const vw=document.querySelector('.tm-vol-wrap');
-  if(cw){const c=document.getElementById('tm-candle-chart');if(c){c.width=cw.clientWidth||800;c.height=cw.clientHeight||220;}}
-  if(rw){const c=document.getElementById('tm-rsi-chart');if(c){c.width=rw.clientWidth||800;c.height=rw.clientHeight||80;}}
-  if(vw){const c=document.getElementById('tm-vol-chart');if(c){c.width=vw.clientWidth||800;c.height=vw.clientHeight||60;}}
+  const labels=candles.map(function(c){return new Date(c.t*1000).toLocaleDateString('en-US',{month:'short',day:'numeric'});});
+  const closes=candles.map(function(c){return c.c;});
+  const greens=candles.map(function(c){return c.c>=c.o?'rgba(34,197,94,.8)':'rgba(239,68,68,.8)';});
+  const baseOpts={responsive:true,maintainAspectRatio:false,animation:false,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return'$'+ctx.parsed.y.toFixed(2);}}}},
+    scales:{
+      x:{ticks:{color:'#52526a',font:{size:9},maxRotation:0,maxTicksLimit:8},grid:{color:'rgba(255,255,255,.04)'}},
+      y:{position:'right',ticks:{color:'#52526a',font:{size:9},callback:function(v){return'$'+v.toFixed(0);}},grid:{color:'rgba(255,255,255,.04)'}}
+    }};
 
-  // Candlestick (using bar chart to simulate candles)
-  const labels=candles.map(c=>new Date(c.t*1000).toLocaleDateString('en-US',{month:'short',day:'numeric'}));
-  const candleData=candles.map(c=>({x:new Date(c.t*1000).toLocaleDateString('en-US',{month:'short',day:'numeric'}),o:c.o,h:c.h,l:c.l,c:c.c}));
-  const colors=candles.map(c=>c.c>=c.o?'rgba(34,197,94,.85)':'rgba(239,68,68,.85)');
-
-  const sup=myData&&parseFloat(myData.support)||null;
-  const res=myData&&parseFloat(myData.resistance)||null;
-  const sl=myData&&parseFloat(myData.stopLoss)||null;
-
-  const annotations={};
-  if(sup)annotations.support={type:'line',yMin:sup,yMax:sup,borderColor:'rgba(59,130,246,.7)',borderWidth:1.5,borderDash:[4,4],label:{content:'Support $'+sup.toFixed(2),display:true,position:'end',color:'#3b82f6',font:{size:10}}};
-  if(res)annotations.resistance={type:'line',yMin:res,yMax:res,borderColor:'rgba(245,158,11,.7)',borderWidth:1.5,borderDash:[4,4],label:{content:'Resistance $'+res.toFixed(2),display:true,position:'end',color:'#f59e0b',font:{size:10}}};
-  if(sl)annotations.stoploss={type:'line',yMin:sl,yMax:sl,borderColor:'rgba(239,68,68,.6)',borderWidth:1.5,borderDash:[3,3],label:{content:'Stop $'+sl.toFixed(2),display:true,position:'start',color:'#ef4444',font:{size:10}}};
-
-  const baseOpts={responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false},tooltip:{enabled:true}},scales:{x:{ticks:{color:'#52526a',font:{size:9},maxTicksLimit:8},grid:{color:'rgba(255,255,255,.04)'}},y:{position:'right',ticks:{color:'#52526a',font:{size:9}},grid:{color:'rgba(255,255,255,.04)'}}}};
-
-  // Price chart (simulate candles with bar ranges)
-  const priceEl=document.getElementById('tm-candle-chart');
+  // ── PRICE LINE CHART with high/low area ──
+  var priceEl=document.getElementById('tm-candle-chart');
   if(priceEl){
+    // Destroy existing if any
+    if(terminalCharts.price){try{terminalCharts.price.destroy();}catch(e){}}
     try{
+      var datasets=[
+        // High-Low range as filled area
+        {label:'High',data:candles.map(function(c){return c.h;}),borderColor:'rgba(255,255,255,0)',backgroundColor:'rgba(124,111,255,.08)',fill:'+1',pointRadius:0,borderWidth:0,tension:0.1},
+        {label:'Low',data:candles.map(function(c){return c.l;}),borderColor:'rgba(255,255,255,0)',backgroundColor:'rgba(124,111,255,.08)',fill:false,pointRadius:0,borderWidth:0,tension:0.1},
+        // Close price line
+        {label:'Close',data:closes,borderColor:'#a78bfa',borderWidth:2,fill:false,pointRadius:0,tension:0.1}
+      ];
+      // Add support/resistance/stop as flat line datasets
+      var sup=myData&&parseFloat(myData.support)||0;
+      var res=myData&&parseFloat(myData.resistance)||0;
+      var slv=myData&&parseFloat(myData.stopLoss)||0;
+      if(sup>0)datasets.push({label:'Support $'+sup.toFixed(0),data:candles.map(function(){return sup;}),borderColor:'rgba(59,130,246,.7)',borderWidth:1.5,borderDash:[6,4],fill:false,pointRadius:0,tension:0});
+      if(res>0)datasets.push({label:'Resistance $'+res.toFixed(0),data:candles.map(function(){return res;}),borderColor:'rgba(245,158,11,.7)',borderWidth:1.5,borderDash:[6,4],fill:false,pointRadius:0,tension:0});
+      if(slv>0)datasets.push({label:'Stop $'+slv.toFixed(0),data:candles.map(function(){return slv;}),borderColor:'rgba(239,68,68,.7)',borderWidth:1.5,borderDash:[3,4],fill:false,pointRadius:0,tension:0});
+
       terminalCharts.price=new Chart(priceEl,{
-        type:'bar',
-        data:{labels,datasets:[
-          {label:'Range',data:candles.map(c=>c.h-c.l),base:candles.map(c=>c.l),backgroundColor:'rgba(100,100,120,.4)',barThickness:1},
-          {label:'Body',data:candles.map(c=>Math.abs(c.c-c.o)),base:candles.map(c=>Math.min(c.o,c.c)),backgroundColor:colors,barThickness:5}
-        ]},
-        options:{...baseOpts,plugins:{...baseOpts.plugins,annotation:{annotations}},scales:{...baseOpts.scales,y:{...baseOpts.scales.y,ticks:{...baseOpts.scales.y.ticks,callback:v=>'$'+v.toFixed(0)}}}}
+        type:'line',
+        data:{labels:labels,datasets:datasets},
+        options:{...baseOpts,plugins:{...baseOpts.plugins,legend:{display:(sup>0||res>0||slv>0),position:'top',labels:{color:'#8a8aa8',font:{size:9},boxWidth:20,padding:8}}}}
       });
-    }catch(e){}
+    }catch(e){console.log('Price chart error:',e);}
   }
 
-  // RSI chart
-  const rsiEl=document.getElementById('tm-rsi-chart');
-  if(rsiEl&&rsiVals.length){
-    const rsiLabels=labels.slice(labels.length-rsiVals.length);
+  // ── RSI CHART ──
+  var rsiEl=document.getElementById('tm-rsi-chart');
+  if(rsiEl&&rsiVals.length>0){
+    if(terminalCharts.rsi){try{terminalCharts.rsi.destroy();}catch(e){}}
     try{
+      var rsiClean=rsiVals.filter(function(v){return v!==null;});
+      var rsiLabels=labels.slice(labels.length-rsiClean.length);
       terminalCharts.rsi=new Chart(rsiEl,{
         type:'line',
         data:{labels:rsiLabels,datasets:[
-          {label:'RSI',data:rsiVals,borderColor:'#a78bfa',borderWidth:1.5,fill:false,pointRadius:0,tension:.3},
-          {label:'70',data:rsiVals.map(()=>70),borderColor:'rgba(239,68,68,.4)',borderWidth:1,borderDash:[4,4],fill:false,pointRadius:0},
-          {label:'30',data:rsiVals.map(()=>30),borderColor:'rgba(34,197,94,.4)',borderWidth:1,borderDash:[4,4],fill:false,pointRadius:0}
+          {label:'RSI',data:rsiClean,borderColor:'#c084fc',borderWidth:1.5,fill:false,pointRadius:0,tension:0.2},
+          {label:'Overbought',data:rsiClean.map(function(){return 70;}),borderColor:'rgba(239,68,68,.4)',borderWidth:1,borderDash:[4,4],fill:false,pointRadius:0},
+          {label:'Oversold',data:rsiClean.map(function(){return 30;}),borderColor:'rgba(34,197,94,.4)',borderWidth:1,borderDash:[4,4],fill:false,pointRadius:0}
         ]},
-        options:{...baseOpts,scales:{...baseOpts.scales,y:{...baseOpts.scales.y,min:0,max:100,ticks:{color:'#52526a',font:{size:9},callback:v=>v}}}}
+        options:{responsive:true,maintainAspectRatio:false,animation:false,
+          plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return'RSI: '+ctx.parsed.y.toFixed(1);}}}},
+          scales:{
+            x:{ticks:{color:'#52526a',font:{size:9},maxRotation:0,maxTicksLimit:6},grid:{color:'rgba(255,255,255,.04)'}},
+            y:{position:'right',min:0,max:100,ticks:{color:'#52526a',font:{size:9},stepSize:25,callback:function(v){return v;}},grid:{color:'rgba(255,255,255,.04)'}}
+          }}
       });
-    }catch(e){}
+    }catch(e){console.log('RSI chart error:',e);}
   }
 
-  // Volume
-  const volEl=document.getElementById('tm-vol-chart');
+  // ── VOLUME CHART ──
+  var volEl=document.getElementById('tm-vol-chart');
   if(volEl){
+    if(terminalCharts.vol){try{terminalCharts.vol.destroy();}catch(e){}}
     try{
       terminalCharts.vol=new Chart(volEl,{
         type:'bar',
-        data:{labels,datasets:[{label:'Volume',data:candles.map(c=>c.v),backgroundColor:colors,barThickness:4}]},
-        options:{...baseOpts,scales:{...baseOpts.scales,y:{...baseOpts.scales.y,ticks:{color:'#52526a',font:{size:9},callback:v=>v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':v}}}}
+        data:{labels:labels,datasets:[{label:'Volume',data:candles.map(function(c){return c.v;}),backgroundColor:greens,barPercentage:0.9,categoryPercentage:0.9}]},
+        options:{responsive:true,maintainAspectRatio:false,animation:false,
+          plugins:{legend:{display:false}},
+          scales:{
+            x:{ticks:{color:'#52526a',font:{size:9},maxRotation:0,maxTicksLimit:8},grid:{display:false}},
+            y:{position:'right',ticks:{color:'#52526a',font:{size:9},callback:function(v){return v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':String(v);}},grid:{display:false}}
+          }}
       });
-    }catch(e){}
+    }catch(e){console.log('Volume chart error:',e);}
   }
 }
 
@@ -2747,6 +2832,301 @@ function generateTrigger(s,rsi,macd,macdSig,pattern){
 }
 
 
+
+// ══════════════════════════════════════════════════════
+// AI ADVISOR
+// ══════════════════════════════════════════════════════
+let aiHistory=[]; // {role,content}
+let aiLoading=false;
+
+const AI_SYSTEM=`You are a master trader and investment advisor combining the wisdom of Warren Buffett and Paul Tudor Jones.
+
+Warren Buffett side: You value fundamentals, moats, long-term thinking. You are patient. You would rather do nothing than make a bad trade. You hate speculation without conviction.
+
+Paul Tudor Jones side: You respect price action, momentum, risk management. You never let a loss run. You size positions based on risk, not hope. You always know your stop before you enter.
+
+Combined persona rules:
+- You are direct and confident. No hedging.
+- You tell the user NOT to trade as confidently as you tell them TO trade.
+- You ALWAYS ask about their stop loss and risk/reward before approving any trade.
+- You believe protecting capital is more important than making money.
+- You reference real trading concepts: RSI, MACD, support/resistance, volume, R/R ratio.
+- You do NOT give generic advice. You reference their specific positions and numbers.
+- You speak plainly. No jargon for the sake of it.
+- End every response with one clear ACTION the user should take right now.
+- You are not a financial advisor. You are a master trader sharing your perspective.`;
+
+function buildPortfolioContext(){
+  const lines=[];
+  lines.push('=== MY CURRENT PORTFOLIO ===');
+  if(positions.length){
+    positions.forEach(p=>{
+      const c=cp(p),i=inv(p),g=plv(p),gp=plp(p),dc=priceCache[p.ticker]?.dayChange;
+      lines.push(`${p.ticker} (${p.company||''}): ${parseFloat(p.shares)||0} shares @ avg $${parseFloat(p.avgBuy)||0} | Live: ${c?'$'+c.toFixed(2):'no price'} | P/L: ${i?(gp>=0?'+':'')+gp.toFixed(1)+'% ($'+(g>=0?'+':'')+fmt(g)+')':'n/a'} | Day: ${dc!=null?(dc>=0?'+':'')+dc.toFixed(2)+'%':'n/a'} | Conviction: ${p.conviction||'?'} | Trend: ${p.trend||'?'} | Stop: ${p.stopLoss?'$'+p.stopLoss:'not set'} | Target: ${p.takeProfit||'not set'} | Action: ${p.nextAction||'?'}`);
+    });
+  } else lines.push('No positions yet.');
+  lines.push('\n=== MY WATCHLIST ===');
+  if(watchlist.length){
+    watchlist.forEach(w=>{
+      const c=priceCache[w.ticker]?.current,dc=priceCache[w.ticker]?.dayChange;
+      lines.push(`${w.ticker}: Target buy $${w.targetBuy||'?'} | Live: ${c?'$'+c.toFixed(2):'n/a'} | Day: ${dc!=null?(dc>=0?'+':'')+dc.toFixed(2)+'%':'n/a'} | Conviction: ${w.conviction||'?'}`);
+    });
+  } else lines.push('Watchlist empty.');
+  const m=calcM();
+  lines.push(`\n=== PORTFOLIO SUMMARY ===\nTotal invested: $${fmt(m.invested)} | Market value: $${fmt(m.value)} | P/L: ${m.pl>=0?'+':''}$${fmt(m.pl)} (${m.plPct>=0?'+':''}${m.plPct.toFixed(2)}%) | Positions: ${positions.length} | Winners: ${m.w} | Losers: ${m.l}`);
+  return lines.join('\n');
+}
+
+async function renderAIAdvisor(){
+  document.getElementById('content').innerHTML=`
+    <div class="ai-wrap">
+      <div class="ai-persona">
+        <div style="font-size:28px">🤖</div>
+        <div>
+          <div style="font-weight:800;font-size:14px">AI Trading Advisor</div>
+          <div style="font-size:11px;color:var(--text3)">Warren Buffett × Paul Tudor Jones · Portfolio-aware · Blunt & honest</div>
+        </div>
+        <button onclick="clearAIHistory()" style="margin-left:auto;padding:5px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text3);font-size:11px;cursor:pointer">Clear chat</button>
+      </div>
+      ${!openaiKey?`<div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:12px;padding:1rem;margin-bottom:1rem;font-size:13px;color:var(--yellow)">⚠️ No OpenAI key set. Go to <button onclick="go('settings')" style="background:none;border:none;color:var(--accent2);cursor:pointer;font-weight:700;font-size:13px;padding:0">Settings →</button> and paste your OpenAI API key to enable the AI Advisor.</div>`:''}
+      <div class="ai-chips">
+        ${['Review my portfolio','What is my biggest risk right now?','Should I add more to my best position?','Explain RSI to me','What would you do with my portfolio today?','Am I overexposed to any sector?','Which position should I exit first?'].map(q=>`<div class="ai-chip" onclick="sendAIMessage('${q}')">${q}</div>`).join('')}
+      </div>
+      <div class="ai-messages" id="aiMessages">
+        ${aiHistory.length===0?`<div class="ai-msg assistant"><strong>Good ${new Date().getHours()<12?'morning':new Date().getHours()<17?'afternoon':'evening'}.</strong> I have reviewed your portfolio. Ask me anything — what is working, what is not, what you should do next. I will give you a straight answer, not a comfortable one.</div>`:''}
+        ${aiHistory.map(m=>`<div class="ai-msg ${m.role}">${formatAIMsg(m.content)}</div>`).join('')}
+      </div>
+      <div class="ai-input-row">
+        <textarea class="ai-input" id="aiInput" placeholder="Ask about your portfolio, a stock, or any trading concept..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendAIFromInput();}"></textarea>
+        <button class="ai-send" id="aiSendBtn" onclick="sendAIFromInput()">Send</button>
+      </div>
+    </div>`;
+  scrollAIBottom();
+  // Load history from Supabase
+  if(aiHistory.length===0)await loadAIHistory();
+}
+
+function formatAIMsg(text){
+  return text
+    .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n\n/g,'</p><p>')
+    .replace(/\n/g,'<br>')
+    .replace(/^(.)/,'<p>$1')
+    .replace(/(.)$/,'$1</p>');
+}
+
+function scrollAIBottom(){
+  setTimeout(()=>{const el=document.getElementById('aiMessages');if(el)el.scrollTop=el.scrollHeight;},50);
+}
+
+async function sendAIFromInput(){
+  const inp=document.getElementById('aiInput');
+  const msg=(inp?.value||'').trim();
+  if(!msg)return;
+  inp.value='';
+  await sendAIMessage(msg);
+}
+
+async function sendAIMessage(userMsg){
+  if(aiLoading)return;
+  if(!openaiKey){toast('Add your OpenAI key in Settings first','t-error');return;}
+
+  aiLoading=true;
+  const sendBtn=document.getElementById('aiSendBtn');
+  if(sendBtn)sendBtn.disabled=true;
+
+  // Add user message
+  aiHistory.push({role:'user',content:userMsg});
+  renderAIMessages();
+  // Show typing indicator
+  const msgs=document.getElementById('aiMessages');
+  if(msgs){const t=document.createElement('div');t.className='ai-typing';t.id='aiTyping';t.innerHTML='<div class="ai-dot"></div><div class="ai-dot"></div><div class="ai-dot"></div>';msgs.appendChild(t);}
+  scrollAIBottom();
+
+  try{
+    // Build messages array with portfolio context
+    const portfolioCtx=buildPortfolioContext();
+    const messages=[
+      {role:'system',content:AI_SYSTEM+'\n\n'+portfolioCtx},
+      ...aiHistory.slice(-10).map(m=>({role:m.role,content:m.content}))
+    ];
+
+    const resp=await fetch('https://api.openai.com/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+openaiKey},
+      body:JSON.stringify({model:'gpt-4o',messages,max_tokens:600,temperature:0.7})
+    });
+    const data=await resp.json();
+    const reply=data.choices?.[0]?.message?.content||'Sorry, I could not get a response. Check your API key in Settings.';
+
+    // Remove typing indicator
+    document.getElementById('aiTyping')?.remove();
+
+    // Add assistant message
+    aiHistory.push({role:'assistant',content:reply});
+
+    // Save to Supabase
+    await saveAIMessage('user',userMsg);
+    await saveAIMessage('assistant',reply);
+
+    renderAIMessages();
+    scrollAIBottom();
+  }catch(e){
+    document.getElementById('aiTyping')?.remove();
+    aiHistory.push({role:'assistant',content:'Error connecting to OpenAI: '+e.message+'. Check your API key in Settings.'});
+    renderAIMessages();
+  }
+
+  aiLoading=false;
+  if(sendBtn)sendBtn.disabled=false;
+}
+
+function renderAIMessages(){
+  const el=document.getElementById('aiMessages');
+  if(!el)return;
+  el.innerHTML=aiHistory.map(m=>`<div class="ai-msg ${m.role}">${formatAIMsg(m.content)}</div>`).join('');
+  scrollAIBottom();
+}
+
+async function loadAIHistory(){
+  try{
+    const r=await fetch(SUPABASE_URL+'/rest/v1/ai_conversations?select=role,content,created_at&order=created_at.asc&limit=40',{headers:H});
+    const rows=await r.json();
+    if(Array.isArray(rows)&&rows.length){
+      aiHistory=rows.map(r=>({role:r.role,content:r.content}));
+      renderAIMessages();
+    }
+  }catch(e){}
+}
+
+async function saveAIMessage(role,content){
+  try{
+    await fetch(SUPABASE_URL+'/rest/v1/ai_conversations',{
+      method:'POST',
+      headers:{...H,'Prefer':'return=minimal'},
+      body:JSON.stringify({role,content})
+    });
+  }catch(e){}
+}
+
+async function clearAIHistory(){
+  if(!confirm('Clear all conversation history?'))return;
+  aiHistory=[];
+  try{await fetch(SUPABASE_URL+'/rest/v1/ai_conversations?created_at=neq.null',{method:'DELETE',headers:H});}catch(e){}
+  renderAIAdvisor();
+  toast('Chat cleared','');
+}
+
+
+// ══════════════════════════════════════════════════════
+// BTC LEADING INDICATOR ENGINE
+// ══════════════════════════════════════════════════════
+async function runBTCAnalysis(){
+  const stock=document.getElementById('btcStock')?.value||'MSTR';
+  const el=document.getElementById('btcResult');
+  if(!el)return;
+  if(!apiKey){el.innerHTML='<div style="color:var(--yellow)">Add Finnhub API key in Settings to fetch live BTC & stock prices.</div>';return;}
+
+  el.innerHTML='<div style="color:var(--text3);display:flex;align-items:center;gap:8px"><span style="animation:spin 1s linear infinite;display:inline-block">⏳</span> Fetching BTC & '+stock+' live data...</div>';
+
+  // Fetch BTC and stock quotes in parallel
+  let btcData=null,stockData=null;
+  try{
+    const [btcR,stockR]=await Promise.all([
+      fetch('https://finnhub.io/api/v1/quote?symbol=BINANCE:BTCUSDT&token='+apiKey),
+      fetch('https://finnhub.io/api/v1/quote?symbol='+encodeURIComponent(stock)+'&token='+apiKey)
+    ]);
+    btcData=await btcR.json();
+    stockData=await stockR.json();
+  }catch(e){el.innerHTML='<div style="color:var(--red)">Error fetching data: '+e.message+'</div>';return;}
+
+  if(!btcData?.c||btcData.c<=0){el.innerHTML='<div style="color:var(--yellow)">Could not load BTC price. Try again.</div>';return;}
+
+  const btcPrice=btcData.c,btcDC=btcData.dp||0,btcH=btcData.h,btcL=btcData.l,btcPrev=btcData.pc;
+  const sPrice=stockData?.c||0,sDC=stockData?.dp||0;
+
+  // Get position data for the stock
+  const myPos=positions.find(function(p){return p.ticker===stock;});
+  const mySup=myPos&&parseFloat(myPos.support)||0;
+  const myRes=myPos&&parseFloat(myPos.resistance)||0;
+  const myTrend=myPos?.trend||'';
+  const myMom=parseInt(myPos?.momentum)||5;
+
+  // ── STEP 1: BTC TREND ──
+  const btcRange=btcH-btcL;
+  const btcMidPoint=(btcH+btcL)/2;
+  const btcTrend=btcDC>2?'strong_up':btcDC>0.5?'slight_up':btcDC<-2?'strong_down':btcDC<-0.5?'slight_down':'sideways';
+  const btcTrendLabel={'strong_up':'🟢 Strong Uptrend','slight_up':'🟡 Slight Uptrend','sideways':'⚪ Consolidating','slight_down':'🟠 Slight Downtrend','strong_down':'🔴 Strong Downtrend'}[btcTrend];
+
+  // ── STEP 2: BTC MOMENTUM ──
+  const btcMomScore=Math.abs(btcDC)/btcRange*100;
+  const btcMomLabel=btcMomScore>60?'Accelerating':btcMomScore>30?'Moderate':'Slowing';
+  const btcBreakout=btcPrice>=btcH*0.99?'At session high — breakout territory':'';
+  const btcRejection=btcPrice<=btcL*1.01?'At session low — rejection/breakdown':'';
+
+  // ── STEP 3: SENTIMENT ──
+  const sentiment=btcTrend==='strong_up'?'risk_on':btcTrend==='slight_up'?'mild_on':btcTrend==='strong_down'?'risk_off':btcTrend==='slight_down'?'mild_off':'neutral';
+  const sentimentLabel={'risk_on':'🚀 Risk-ON — Appetite high','mild_on':'📈 Mildly risk-on','neutral':'😐 Neutral','mild_off':'📉 Mildly risk-off','risk_off':'🛡️ Risk-OFF — Defensive'}[sentiment];
+
+  // ── STEP 4: STOCK REACTION MODEL ──
+  const BETA=2.0; // STRIVE/BTC-correlated stocks move ~2x BTC sentiment
+  const expectedMove=btcDC*BETA;
+  let reactionModel='',reactionColor='var(--text2)';
+  if(btcTrend==='strong_up'){reactionModel=`Expect ${stock} to rise faster (high beta). Watch for breakout continuation. Avoid selling too early.`;reactionColor='var(--green)';}
+  else if(btcTrend==='slight_up'){reactionModel=`Expect ${stock} to chop or pull back slightly. Look for dip-buy opportunities near support.`;reactionColor='var(--yellow)';}
+  else if(btcTrend==='sideways'){reactionModel=`${stock} likely to consolidate. No strong edge either way — wait for BTC to break direction.`;reactionColor='var(--text2)';}
+  else if(btcTrend==='slight_down'){reactionModel=`${stock} may drift lower. Avoid adding. Watch support levels carefully.`;reactionColor='var(--yellow)';}
+  else{reactionModel=`Expect ${stock} to drop hard. BTC leading down. Avoid buying until BTC stabilises. Risk is elevated.`;reactionColor='var(--red)';}
+
+  // ── STEP 5: VOLATILITY MULTIPLIER ──
+  const volMult=btcTrend.includes('up')?2.0:btcTrend.includes('down')?2.5:1.5;
+  const projectedMove=(btcDC*volMult).toFixed(1);
+
+  // ── STEP 6: OUTPUT ──
+  const direction=btcTrend==='strong_up'||btcTrend==='slight_up'?'UP':btcTrend==='strong_down'||btcTrend==='slight_down'?'DOWN':'SIDEWAYS';
+  const dirColor=direction==='UP'?'var(--green)':direction==='DOWN'?'var(--red)':'var(--yellow)';
+  const confidence=btcTrend==='strong_up'||btcTrend==='strong_down'?'HIGH':btcTrend==='sideways'?'LOW':'MEDIUM';
+  const action=direction==='UP'?(btcBreakout?'WATCH FOR ENTRY ON PULLBACK':'BUY / HOLD'):direction==='DOWN'?(btcRejection?'EXIT / AVOID':'REDUCE / WAIT'):'HOLD / WAIT';
+  const actionColor=action.includes('BUY')||action.includes('HOLD')?'var(--green)':action.includes('EXIT')||action.includes('AVOID')?'var(--red)':'var(--yellow)';
+
+  el.innerHTML=`
+    <div class="btc-step" style="border-color:rgba(247,147,26,.4)">
+      <div style="font-size:10px;font-weight:800;color:#f7931a;text-transform:uppercase;margin-bottom:2px">Step 1 — BTC Trend</div>
+      <div style="font-size:13px;font-weight:700">${btcTrendLabel}</div>
+      <div style="font-size:11px;color:var(--text3)">BTC: $${btcPrice.toLocaleString()} | Day: ${btcDC>=0?'+':''}${btcDC.toFixed(2)}% | H: $${btcH.toLocaleString()} L: $${btcL.toLocaleString()}</div>
+    </div>
+    <div class="btc-step" style="border-color:rgba(124,111,255,.4)">
+      <div style="font-size:10px;font-weight:800;color:var(--accent2);text-transform:uppercase;margin-bottom:2px">Step 2 — BTC Momentum</div>
+      <div style="font-size:13px;font-weight:700">${btcMomLabel} ${btcBreakout||btcRejection?'— '+( btcBreakout||btcRejection):''}</div>
+      <div style="font-size:11px;color:var(--text3)">Momentum score: ${btcMomScore.toFixed(0)}%</div>
+    </div>
+    <div class="btc-step" style="border-color:rgba(6,182,212,.4)">
+      <div style="font-size:10px;font-weight:800;color:var(--cyan);text-transform:uppercase;margin-bottom:2px">Step 3 — Market Sentiment</div>
+      <div style="font-size:13px;font-weight:700">${sentimentLabel}</div>
+    </div>
+    <div class="btc-step" style="border-color:${reactionColor}55">
+      <div style="font-size:10px;font-weight:800;color:${reactionColor};text-transform:uppercase;margin-bottom:2px">Step 4 — ${stock} Reaction Model</div>
+      <div style="font-size:12px;color:${reactionColor};font-weight:600">${reactionModel}</div>
+      ${sPrice?`<div style="font-size:11px;color:var(--text3);margin-top:2px">${stock}: $${sPrice.toFixed(2)} | Day: ${sDC>=0?'+':''}${sDC.toFixed(2)}%</div>`:''}
+    </div>
+    <div class="btc-step" style="border-color:rgba(245,158,11,.4)">
+      <div style="font-size:10px;font-weight:800;color:var(--yellow);text-transform:uppercase;margin-bottom:2px">Step 5 — Volatility Multiplier</div>
+      <div style="font-size:12px;color:var(--text2)">${stock} moves <strong style="color:var(--yellow)">${volMult}x</strong> BTC sentiment swings</div>
+      <div style="font-size:11px;color:var(--text3)">Projected ${stock} move based on BTC: <strong style="color:${btcDC>=0?'var(--green)':'var(--red)'}">${projectedMove>=0?'+':''}${projectedMove}%</strong></div>
+    </div>
+    <div class="btc-output">
+      <div style="font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.75rem">⚡ Step 6 — Output</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:.75rem">
+        <div style="text-align:center"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Direction</div><div class="btc-direction" style="color:${dirColor}">${direction}</div></div>
+        <div style="text-align:center"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Confidence</div><div style="font-size:18px;font-weight:800;color:${confidence==='HIGH'?'var(--green)':confidence==='MEDIUM'?'var(--yellow)':'var(--text3)'}">${confidence}</div></div>
+        <div style="text-align:center"><div style="font-size:10px;color:var(--text3);text-transform:uppercase;margin-bottom:3px">Action</div><div style="font-size:14px;font-weight:800;color:${actionColor}">${action}</div></div>
+      </div>
+      ${mySup||myRes?`<div style="font-size:12px;color:var(--text2);border-top:1px solid rgba(255,255,255,.07);padding-top:.75rem"><strong>Key levels for ${stock}:</strong> ${mySup?'Support $'+mySup.toFixed(2):''} ${myRes?' · Resistance $'+myRes.toFixed(2):''}</div>`:''}
+      <div style="font-size:10px;color:var(--text3);margin-top:.5rem;font-style:italic">Based on live BTC price action. Always confirm with ${stock} price action before executing.</div>
+    </div>`;
+}
+
+
 // ── LEARN PAGE ──
 function renderLearnPage(){
   const active=LESSONS.filter(l=>!completedLessons.has(l.key));
@@ -2932,6 +3312,17 @@ function renderSettings(){
           <button class="btn" onclick="testApiKey()">Test</button>
         </div>
         <div id="apiStatus" class="muted" style="font-size:12px;margin-top:6px">${apiKey?'Key loaded from Supabase':'No key saved'}</div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:1.5rem;margin-bottom:1.5rem">
+        <div style="font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem">AI Advisor — OpenAI API key</div>
+        <div class="stat-row">
+          <div><div style="font-size:14px;font-weight:500">OpenAI API key</div><div class="muted" style="font-size:12px">Saved to Supabase · powers the 🤖 AI Advisor · <a href="https://platform.openai.com/api-keys" target="_blank" style="color:var(--accent2)">Get key →</a></div></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <input type="password" id="oaIn" value="${esc(openaiKey)}" placeholder="Paste OpenAI API key (sk-proj-...)..." style="flex:1;min-width:180px;padding:8px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;outline:none"/>
+          <button class="btn" onclick="saveOpenAIKey()">Save key</button>
+        </div>
+        <div id="oaStatus" class="muted" style="font-size:12px;margin-top:6px">${openaiKey?'✓ OpenAI key loaded — AI Advisor ready':'No key saved — paste your key above'}</div>
       </div>
       <div style="border-top:1px solid var(--border);padding-top:1.5rem;margin-bottom:1.5rem">
         <div style="font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem">Alert configuration</div>
@@ -3204,6 +3595,8 @@ function buildWidgetHTML(order,{winners,losers,watchMovers,bySector,bestSector,m
     earnings:{wide:true,enabled:()=>widgetConfig.earnings,html:()=>`<div class="card"><span class="drag-handle">⠿</span><div class="card-title">📅 Upcoming earnings ${tipIcon('Earnings dates for stocks in your portfolio in the next 30 days.')}</div><div id="earningsWidget"><div class="muted" style="font-size:12px">Loading...</div></div></div>`},
     news:{wide:true,enabled:()=>widgetConfig.news,html:()=>`<div class="card"><span class="drag-handle">⠿</span><div class="card-title">📰 News for your stocks ${tipIcon('Latest news headlines for stocks in your portfolio.')}</div><div id="newsWidget"><div class="muted" style="font-size:12px">Loading news...</div></div></div>`},
     forecast:{wide:true,enabled:()=>widgetConfig.forecast,html:()=>`<div class="card"><span class="drag-handle">⠿</span><div class="card-title">🔮 Forecast signals ${tipIcon('Technical signals based on price momentum and trend. Not financial advice.')}</div><div id="forecastWidget">${renderForecast()}</div></div>`},
+,
+    btcLeading:{wide:true,enabled:()=>widgetConfig.btcLeading!==false,html:()=>`<div class="btc-widget"><span class="drag-handle">⠿</span><div class="card-title" style="color:#f7931a">₿ BTC Leading Indicator ${tipIcon('Uses Bitcoin price action as a leading indicator to predict short-term direction of BTC-correlated stocks like STRIVE.')}</div><div id="btcWidgetInner"><div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:.75rem"><select id="btcStock" style="padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px;outline:none;cursor:pointer"><option value="MSTR">MSTR (MicroStrategy)</option><option value="COIN">COIN (Coinbase)</option>${positions.filter(p=>['MSTR','COIN','RIOT','MARA','CLSK','CIFR','BTBT','HUT','CORZ','IREN'].includes(p.ticker)||p.ticker==='STRIVE').map(p=>`<option value="${esc(p.ticker)}" selected>${esc(p.ticker)}</option>`).join('')}${watchlist.filter(w=>['MSTR','COIN','RIOT','MARA','STRIVE'].includes(w.ticker)).map(w=>`<option value="${esc(w.ticker)}">${esc(w.ticker)}</option>`).join('')}</select><button onclick="runBTCAnalysis()" style="padding:6px 14px;border-radius:var(--radius);border:1px solid rgba(247,147,26,.4);background:rgba(247,147,26,.1);color:#f7931a;font-size:12px;font-weight:700;cursor:pointer">⚡ Analyse</button></div><div id="btcResult" style="font-size:12px;color:var(--text3)">Select a stock and tap Analyse to run the BTC correlation analysis.</div></div></div>`},
     activity:{wide:true,enabled:()=>widgetConfig.activity,html:()=>`<div class="card interactive" onclick="openWidgetPopup('activity')"><span class="drag-handle">⠿</span><div class="card-title">🕐 Recent activity</div>${notifications.slice(0,5).map(n=>{const icons={alert:'🔔',gain:'📈',loss:'📉',move:'⚡',scanner:'🔭'};return`<div style="padding:7px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:flex-start"><span style="font-size:16px">${icons[n.type]||'📌'}</span><div><div style="font-size:12px;font-weight:600">${esc(n.title)}</div><div style="font-size:11px;color:var(--text3)">${timeAgo(n.created_at)}</div></div></div>`;}).join('')||'<div class="muted" style="font-size:12px">Activity will appear here as you use the app.</div>'}</div>`}
   };
   const allKeys=Object.keys(defs);
