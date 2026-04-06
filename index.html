@@ -2097,7 +2097,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTerminal();});
 async function loadTerminalAnalysis(){
   const s=terminalSignal;
   const body=document.getElementById('tm-body');
-  body.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text3)"><div style="font-size:32px;margin-bottom:1rem;animation:spin .8s linear infinite">⏳</div><div style="font-size:14px">Fetching live data for ${s.ticker}...</div></div>`;
+  body.innerHTML=`<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text3)"><div style="font-size:32px;margin-bottom:1rem">⏳</div><div style="font-size:14px">Fetching live data for ${s.ticker}...</div></div>`;
 
   // Fetch candle data from Finnhub
   const tfMap={'1W':{res:'D',from:Math.floor((Date.now()-7*86400000)/1000)},'1M':{res:'D',from:Math.floor((Date.now()-30*86400000)/1000)},'3M':{res:'D',from:Math.floor((Date.now()-90*86400000)/1000)}};
@@ -2109,10 +2109,10 @@ async function loadTerminalAnalysis(){
     try{
       const r=await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(s.ticker)}&resolution=${tf.res}&from=${tf.from}&to=${to}&token=${apiKey}`);
       const d=await r.json();
-      if(d.s==='ok'&&d.c&&d.c.length){
+      if(d&&d.s==='ok'&&d.c&&d.c.length>0){
         candles=d.t.map((_,i)=>({t:d.t[i],o:d.o[i],h:d.h[i],l:d.l[i],c:d.c[i],v:d.v[i]}));
       }
-    }catch(e){}
+    }catch(e){console.log('Candle fetch error:',e);}
   }
   terminalCandles=candles;
 
@@ -2189,6 +2189,7 @@ async function loadTerminalAnalysis(){
   Object.values(terminalCharts).forEach(c=>{try{c.destroy();}catch(e){}});
   terminalCharts={};
 
+  try{
   body.innerHTML=`
     <!-- CHART SECTION (full width) -->
     <div class="tm-section tm-section-full">
@@ -2279,6 +2280,78 @@ async function loadTerminalAnalysis(){
   if(candles.length){
     setTimeout(()=>renderTerminalCharts(candles,rsiVals,macdData,myData),80);
   }
+  }catch(err){
+    console.error('Terminal render error:',err);
+    body.innerHTML=buildTerminalFallback(s,scenarios,probabilities,practicalAdvice,myData,latestRSI,latestMACD,latestSignal,pattern);
+    if(candles.length)setTimeout(()=>renderTerminalCharts(candles,rsiVals,macdData,myData),80);
+  }
+}
+
+function buildTerminalFallback(s,scenarios,probabilities,practicalAdvice,myData,latestRSI,latestMACD,latestSignal,pattern){
+  // Safe fallback renderer using DOM manipulation instead of template literal
+  const wrap=document.createElement('div');
+  wrap.style.cssText='grid-column:1/-1;display:flex;flex-direction:column;gap:1.25rem';
+
+  // Chart placeholder
+  const chartSec=document.createElement('div');
+  chartSec.className='tm-section tm-section-full';
+  const tfHtml=['1W','1M','3M'].map(tf=>`<div class="tf-pill${terminalTF===tf?' active':''}" onclick="switchTerminalTF('${tf}')">${tf}</div>`).join('');
+  chartSec.innerHTML=`<div class="tm-section-title">📊 Live Chart · ${esc(s.ticker)}<div class="tf-pills" style="margin-left:auto;margin-bottom:0">${tfHtml}</div></div>`
+    +(candles&&candles.length
+      ?`<div class="tm-chart-wrap"><canvas id="tm-candle-chart"></canvas></div><div class="tm-rsi-wrap"><canvas id="tm-rsi-chart"></canvas></div><div class="tm-vol-wrap"><canvas id="tm-vol-chart"></canvas></div>`
+      :`<div style="text-align:center;padding:2rem;background:rgba(255,255,255,.03);border-radius:10px"><div style="font-size:28px;margin-bottom:.5rem">📡</div><div style="color:var(--text3);font-size:13px">${apiKey?'No candle data returned for '+esc(s.ticker)+' — market may be closed or this symbol uses a different format.':'Add your Finnhub API key in Settings to load live charts.'}</div></div>`);
+
+  // RSI indicator strip (even without chart)
+  if(latestRSI!==null){
+    chartSec.innerHTML+=`<div style="margin-top:1rem;padding:.75rem;background:rgba(255,255,255,.03);border-radius:8px"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="color:var(--text3);font-weight:700">RSI(14)</span><span style="font-weight:800;color:${latestRSI>70?'var(--red)':latestRSI<30?'var(--green)':'var(--text)'}">${latestRSI.toFixed(1)} — ${latestRSI>70?'Overbought':latestRSI<30?'Oversold':'Neutral'}</span></div><div style="height:6px;background:linear-gradient(to right,var(--green),var(--yellow),var(--red));border-radius:3px;position:relative"><div style="position:absolute;top:-3px;width:3px;height:12px;background:white;border-radius:2px;left:${Math.min(98,Math.max(2,latestRSI))}%;transform:translateX(-50%)"></div></div><div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text3);margin-top:2px"><span>Oversold 30</span><span>Overbought 70</span></div></div>`;
+  }
+  wrap.appendChild(chartSec);
+
+  // Pattern + MACD
+  if(pattern||latestMACD!==null){
+    const techSec=document.createElement('div');
+    techSec.className='tm-section';
+    let techHtml='<div class="tm-section-title">🔬 Technical Reading</div>';
+    if(pattern)techHtml+=`<div style="background:rgba(255,255,255,.04);border-radius:8px;padding:.75rem;margin-bottom:.75rem"><div style="font-size:11px;font-weight:800;color:${pattern.bullish===true?'var(--green)':pattern.bullish===false?'var(--red)':'var(--yellow)'};text-transform:uppercase;margin-bottom:3px">${esc(pattern.name)}</div><div style="font-size:12px;color:var(--text2)">${esc(pattern.desc)}</div></div>`;
+    if(latestMACD!==null)techHtml+=`<div style="background:rgba(255,255,255,.03);border-radius:8px;padding:.75rem"><div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;margin-bottom:4px">MACD</div><div style="font-size:12px;color:${latestMACD>latestSignal?'var(--green)':'var(--red)'};font-weight:700">${latestMACD>latestSignal?'✓ Bullish — MACD above signal line':'✗ Bearish — MACD below signal line'}</div></div>`;
+    techSec.innerHTML=techHtml;
+    wrap.appendChild(techSec);
+  }
+
+  // Scenarios
+  if(scenarios&&scenarios.length){
+    const scSec=document.createElement('div');
+    scSec.className='tm-section';
+    scSec.innerHTML='<div class="tm-section-title">🎯 What smart traders are watching for</div>'
+      +`<div style="font-size:12px;color:var(--text3);margin-bottom:1rem">with <strong style="color:var(--text)">${esc(s.ticker)}</strong> right now</div>`
+      +scenarios.map((sc,i)=>`<div class="scenario-card ${sc.type}"><div class="sc-label" style="color:${sc.type==='good'?'var(--green)':sc.type==='bad'?'var(--red)':'var(--yellow)'}">Scenario ${String.fromCharCode(65+i)} — ${esc(sc.title)}</div><ul class="sc-steps">${sc.steps.map(st=>`<li>${esc(st)}</li>`).join('')}</ul><div class="sc-outcome">${sc.outcome}</div><div style="margin-top:6px;font-size:11px;color:var(--text3);font-style:italic">${sc.probability}% probability</div></div>`).join('')
+      +`<div style="font-size:12px;color:var(--text3);text-align:center;margin-top:.5rem;font-style:italic">Missing a trade is cheaper than a bad trade.</div>`;
+    wrap.appendChild(scSec);
+  }
+
+  // Probabilities
+  if(probabilities&&probabilities.length){
+    const probSec=document.createElement('div');
+    probSec.className='tm-section tm-section-full';
+    probSec.innerHTML='<div class="tm-section-title">📈 Outcome Probabilities</div>'
+      +`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem">`
+      +probabilities.map(p=>`<div class="prob-bar-wrap"><div class="prob-bar-label"><span style="color:var(--text2);font-size:12px;font-weight:600">${esc(p.label)}</span><span style="font-weight:800;color:${p.color};font-size:13px">${p.pct}%</span></div><div class="prob-bar-track"><div class="prob-bar-fill" style="width:${p.pct}%;background:${p.color}"></div></div><div style="font-size:11px;color:var(--text3);margin-top:3px">${esc(p.note)}</div></div>`).join('')
+      +'</div>';
+    wrap.appendChild(probSec);
+  }
+
+  // Practical advice
+  if(practicalAdvice&&practicalAdvice.length){
+    const advSec=document.createElement('div');
+    advSec.className='tm-section tm-section-full';
+    advSec.style.cssText='background:rgba(124,111,255,.06);border-color:rgba(124,111,255,.25)';
+    advSec.innerHTML='<div class="tm-section-title" style="color:var(--accent2)">⭐ My Practical Advice — If This Was My Money</div>'
+      +practicalAdvice.map(block=>`<div class="advice-block" style="background:${block.bg||'rgba(124,111,255,.08)'};border-color:${block.borderColor||'rgba(124,111,255,.2)'}"><div style="font-size:13px;font-weight:800;margin-bottom:8px;color:${block.titleColor||'var(--accent2)'}">${block.title}</div><ul class="action-list">${block.actions.map(a=>`<li><span style="font-size:16px;flex-shrink:0">${a.icon}</span><span style="color:${a.color||'var(--text)'}">${esc(a.text)}</span></li>`).join('')}</ul></div>`).join('')
+      +`<div style="text-align:center;font-size:12px;color:var(--text3);margin-top:.75rem;padding-top:.75rem;border-top:1px solid rgba(255,255,255,.06);font-style:italic">Analysis based on live price data, technical indicators, and your trade plan. Not financial advice.</div>`;
+    wrap.appendChild(advSec);
+  }
+
+  return wrap.outerHTML;
 }
 
 function switchTerminalTF(tf){terminalTF=tf;loadTerminalAnalysis();}
