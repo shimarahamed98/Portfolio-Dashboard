@@ -1672,6 +1672,8 @@ let scannerAutoTimer=null;
 let scannerTab='positions'; // 'positions'|'watchlist'|'market'
 let marketOpportunities=[];
 let briefingCache={text:'',date:''};
+let triggerAlerts={}; // {ticker_type: {price,direction,label,lastFired}}
+let notifiedSignals={}; // {ticker_type_date: true} — prevents repeat same-day
 
 // ── SIGNAL BUILDER (owned + watchlist) ──
 function buildScannerSignals(sourceFilter){
@@ -1787,6 +1789,39 @@ function buildScannerSignals(sourceFilter){
     }
   });
 
+    // ── SELL SIGNALS ──
+    // Near take profit — trim
+    if(isOwned&&tp&&c>=tp*0.96){
+      const str=Math.min(100,Math.round(70+(c-tp*0.96)/(tp*0.04)*20));
+      const deepAdvice=advice(`${t} is within 4% of your take profit at $${tp.toFixed(2)}. This is the moment to consider taking partial profits. Lock in gains. You can always re-enter if momentum continues.`);
+      signals.push({ticker:t,type:'sell_tp',icon:'💰',label:'Near Take Profit',color:'#22c55e',bg:'rgba(34,197,94,.07)',border:'rgba(34,197,94,.3)',strength:str,price:c,dc,reason:`Price near take profit $${tp.toFixed(2)} — consider trimming`,advice:deepAdvice,source:item._source,isOwned,isSell:true,item});
+    }
+    // RSI overbought + resistance — take profits
+    if(isOwned&&res&&c>res*0.97&&c<res*1.02){
+      const str=65;
+      const deepAdvice=advice(`${t} is pressing against resistance at $${res.toFixed(2)}. Smart money takes partial profits here. You do not need to exit fully — but scaling out 30–50% of your position reduces risk while keeping upside exposure.`);
+      signals.push({ticker:t,type:'sell_resist',icon:'🧱',label:'Sell at Resistance',color:'#f59e0b',bg:'rgba(245,158,11,.07)',border:'rgba(245,158,11,.3)',strength:str,price:c,dc,reason:`At resistance $${res.toFixed(2)} — profit-taking zone`,advice:deepAdvice,source:item._source,isOwned,isSell:true,item});
+    }
+    // Downtrend + negative day — reduce exposure
+    if(isOwned&&trend==='Downtrend'&&dc<-2){
+      const str=Math.min(100,Math.round(55+Math.abs(dc)*3));
+      const deepAdvice=advice(`${t} is in a confirmed downtrend and falling ${dc.toFixed(1)}% today. This is a sell signal. The trend is your enemy if you are long. Consider reducing your position size by 50% and re-evaluating.`);
+      signals.push({ticker:t,type:'sell_trend',icon:'📉',label:'Downtrend — Reduce',color:'#ef4444',bg:'rgba(239,68,68,.07)',border:'rgba(239,68,68,.3)',strength:str,price:c,dc,reason:`Downtrend confirmed, falling ${dc.toFixed(1)}% today`,advice:deepAdvice,source:item._source,isOwned,isSell:true,item});
+    }
+    // Stop loss breach — EXIT NOW
+    if(isOwned&&sl&&c<sl){
+      const str=99;
+      const deepAdvice=`${t} HAS BREACHED YOUR STOP LOSS of $${sl.toFixed(2)}. Current price: $${c.toFixed(2)}. Exit NOW. Do not wait, do not hope for a bounce. Every second you hold past your stop increases your loss. Your plan said exit here — honour it.`;
+      signals.push({ticker:t,type:'sell_stop',icon:'🚨',label:'EXIT NOW — Stop Hit',color:'#ef4444',bg:'rgba(239,68,68,.15)',border:'rgba(239,68,68,.8)',strength:str,price:c,dc,reason:`Stop loss $${sl.toFixed(2)} breached — mandatory exit`,advice:deepAdvice,source:item._source,isOwned,isSell:true,item});
+    }
+    // Any owned position with a day move — always show something
+    if(isOwned&&Math.abs(dc)>=1&&signals.filter(sig=>sig.ticker===t).length===0){
+      const str=Math.round(25+Math.abs(dc)*3);
+      const deepAdvice=advice(`${t} moved ${dc>=0?'+':''}${dc.toFixed(1)}% today. ${dc>0?'Positive session — monitor for continuation. Keep your stop in place.':'Negative session — check if your thesis is still valid. Is there news?'}`);
+      signals.push({ticker:t,type:'dayMove',icon:dc>0?'📊':'📉',label:dc>0?'Positive Day':'Negative Day',color:dc>0?'#86efac':'#fca5a5',bg:dc>0?'rgba(134,239,172,.05)':'rgba(252,165,165,.05)',border:dc>0?'rgba(134,239,172,.2)':'rgba(252,165,165,.2)',strength:str,price:c,dc,reason:`${dc>=0?'+':''}${dc.toFixed(1)}% today`,advice:deepAdvice,source:item._source,isOwned,item});
+    }
+  });
+
   const deduped=[];const seen={};
   signals.sort((a,b)=>b.strength-a.strength).forEach(s=>{
     const key=s.ticker+'_'+s.type;
@@ -1799,14 +1834,7 @@ function buildScannerSignals(sourceFilter){
 async function fetchMarketOpportunities(){
   if(!apiKey)return[];
   try{
-    // Get sectors from owned positions
     const mySectors=[...new Set(positions.map(p=>p.sector).filter(Boolean))];
-    // Fetch broad market top movers from Finnhub
-    const r=await fetch(`https://finnhub.io/api/v1/stock/market-status?exchange=US&token=${apiKey}`);
-    // Use news-based discovery: fetch market news for sector signals
-    const news=await fetch(`https://finnhub.io/api/v1/news?category=general&token=${apiKey}`);
-    const newsD=await news.json();
-    // Fetch top symbols from Finnhub supported tickers (small sample)
     const watchedTickers=new Set([...positions.map(p=>p.ticker),...watchlist.map(w=>w.ticker)]);
     // Build opportunity list from sector peers using known tickers
     const SECTOR_PEERS={
@@ -2047,8 +2075,16 @@ async function runFullScan(){
   const posSigs=buildScannerSignals('portfolio');
   const watchSigs=buildScannerSignals('watchlist');
   for(const s of [...posSigs,...watchSigs].filter(s=>s.strength>=80)){
-    await addNotif(`${s.icon} ${s.ticker}: ${s.label}`,s.advice?.substring(0,120)||s.reason,'scanner',s.ticker);
+    const notifKey=s.ticker+'_'+s.type+'_'+new Date().toDateString();
+    if(!notifiedSignals[notifKey]){
+      notifiedSignals[notifKey]=true;
+      await addNotif(s.icon+' '+s.ticker+': '+s.label,s.advice?.substring(0,120)||s.reason,'scanner',s.ticker);
+      if('Notification' in window&&Notification.permission==='granted'){
+        new Notification(s.icon+' '+s.ticker+': '+s.label,{body:s.advice?.substring(0,80)||s.reason,tag:s.ticker+'_'+s.type});
+      }
+    }
   }
+  checkTriggerAlerts();
   if(page==='scanner')renderScanner();
 }
 // ═══════════════════════════════════════════════════
@@ -2302,15 +2338,115 @@ async function loadTerminalAnalysis(){
   advDiv.innerHTML=advInner;
   body.appendChild(advDiv);
 
+  // ── ENTRY/EXIT TRIGGER SECTION ──
+  var trigger=analysis.entryTrigger;
+  if(trigger){
+    var trigDiv=document.createElement('div');
+    trigDiv.className='tm-section tm-section-full';
+    trigDiv.style.cssText='background:rgba(6,182,212,.05);border-color:rgba(6,182,212,.25)';
+    var isBuyTrig=trigger.type==='buy';
+    var trigColor=isBuyTrig?'#22c55e':'#ef4444';
+    var trigInner='<div class="tm-section-title" style="color:'+trigColor+'">'+(isBuyTrig?'🎯 Your Entry Trigger':'🚨 Your Exit Trigger')+'</div>';
+    trigInner+='<div style="background:rgba(0,0,0,.25);border:1px solid '+trigColor+'33;border-radius:10px;padding:1rem;margin-bottom:1rem">';
+    trigInner+='<div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:4px">'+esc(trigger.priceLabel)+'</div>';
+    trigInner+='<div style="font-size:28px;font-weight:800;color:'+trigColor+';letter-spacing:-1px">$'+parseFloat(trigger.price).toFixed(2)+'</div>';
+    trigInner+='<div style="font-size:12px;color:var(--text2);margin-top:4px">'+esc(trigger.condition)+'</div></div>';
+    trigInner+='<ul class="action-list" style="margin-bottom:1rem">';
+    trigger.actions.forEach(function(a){trigInner+='<li><span style="font-size:16px;flex-shrink:0">'+a.icon+'</span><span style="font-size:13px">'+esc(a.text)+'</span></li>';});
+    trigInner+='</ul>';
+
+    // Notification + watchlist buttons
+    var alreadyWatched=watchlist.some(function(w){return w.ticker===s.ticker;});
+    var alreadyOwned=positions.some(function(p){return p.ticker===s.ticker;});
+    var trigKey=s.ticker+'_'+s.type;
+    var hasTrigger=triggerAlerts[trigKey];
+
+    trigInner+='<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:1rem;border-top:1px solid rgba(255,255,255,.07)">';
+
+    // Set trigger alert button
+    trigInner+='<button onclick="setTriggerAlert(''+esc(s.ticker)+'',''+esc(s.type)+'','+parseFloat(trigger.price).toFixed(2)+',''+trigger.type+'')" style="flex:1;padding:10px 14px;border-radius:10px;border:1px solid '+trigColor+'55;background:'+trigColor+'11;color:'+trigColor+';font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px">'+(hasTrigger?'🔔 Trigger Set — Tap to Remove':'🔔 Set Trigger Alert')+'</button>';
+
+    // Watchlist button (only if not already owned/watched)
+    if(!alreadyOwned&&!alreadyWatched){
+      trigInner+='<button onclick="addToWatchlistFromTerminal(''+esc(s.ticker)+'')" style="padding:10px 14px;border-radius:10px;border:1px solid rgba(124,111,255,.4);background:rgba(124,111,255,.1);color:var(--accent2);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s">+ Watchlist</button>';
+    } else if(alreadyWatched){
+      trigInner+='<div style="padding:10px 14px;border-radius:10px;border:1px solid rgba(34,197,94,.3);background:rgba(34,197,94,.06);color:var(--green);font-size:12px;font-weight:600">✓ On Watchlist</div>';
+    } else {
+      trigInner+='<div style="padding:10px 14px;border-radius:10px;border:1px solid rgba(124,111,255,.3);background:rgba(124,111,255,.06);color:var(--accent2);font-size:12px;font-weight:600">✓ Owned</div>';
+    }
+    trigInner+='</div>';
+
+    if(hasTrigger){
+      trigInner+='<div style="margin-top:.75rem;padding:.65rem 1rem;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:8px;font-size:12px;color:var(--green)">🔔 Alert set for $'+hasTrigger.price.toFixed(2)+' — you will be notified when this price is reached. Fires once per day maximum.</div>';
+    }
+
+    trigDiv.innerHTML=trigInner;
+    body.appendChild(trigDiv);
+  }
+
   // Render charts
   if(candles.length){
     setTimeout(function(){renderTerminalCharts(candles,rsiVals,macdData,myData);},100);
   }
 }
 
+// ── TRIGGER ALERT SYSTEM ──
+function setTriggerAlert(ticker,sigType,price,direction){
+  var key=ticker+'_'+sigType;
+  if(triggerAlerts[key]){
+    delete triggerAlerts[key];
+    toast('Trigger alert removed for '+ticker,'');
+  } else {
+    triggerAlerts[key]={ticker:ticker,price:price,direction:direction,label:sigType,lastFired:null};
+    toast('🔔 Trigger set for '+ticker+' at $'+price.toFixed(2),'t-success');
+    requestNotifPermission();
+  }
+  loadTerminalAnalysis();
+}
+
+function checkTriggerAlerts(){
+  var today=new Date().toDateString();
+  Object.entries(triggerAlerts).forEach(function(entry){
+    var key=entry[0],tr=entry[1];
+    var c=priceCache[tr.ticker]?.current||0;
+    if(!c)return;
+    var notifKey=key+'_'+today;
+    if(notifiedSignals[notifKey])return;
+    var triggered=false;
+    if(tr.direction==='buy'&&c<=tr.price*1.02&&c>=tr.price*0.98)triggered=true;
+    if(tr.direction==='sell'&&c>=tr.price*0.98)triggered=true;
+    if(triggered){
+      notifiedSignals[notifKey]=true;
+      tr.lastFired=today;
+      var msg=tr.direction==='buy'?'🎯 BUY TRIGGER: '+tr.ticker+' at $'+c.toFixed(2)+' — your entry condition is met!':'🚨 SELL TRIGGER: '+tr.ticker+' at $'+c.toFixed(2)+' — take action now!';
+      addNotif(msg,tr.direction==='buy'?'Entry trigger hit — review and execute if conditions confirmed':'Exit trigger hit — execute your exit plan','alert',tr.ticker);
+      if('Notification' in window&&Notification.permission==='granted'){
+        new Notification(tr.direction==='buy'?'🎯 Buy Trigger: '+tr.ticker:'🚨 Sell Trigger: '+tr.ticker,{body:msg,tag:key});
+      }
+    }
+  });
+}
+setInterval(checkTriggerAlerts,60000);
+
+function addToWatchlistFromTerminal(ticker){
+  var existing=watchlist.find(function(w){return w.ticker===ticker;});
+  if(existing){toast(ticker+' already on watchlist','');return;}
+  var price=priceCache[ticker]?.current||0;
+  var wItem={ticker:ticker,company:ticker,targetBuy:price?price.toFixed(2):'',created_at:new Date().toISOString()};
+  saveWatch(wItem).then(function(saved){watchlist.push(saved);toast('✓ '+ticker+' added to watchlist','t-success');loadTerminalAnalysis();}).catch(function(){toast('Error adding to watchlist','t-error');});
+}
+
 function switchTerminalTF(tf){terminalTF=tf;loadTerminalAnalysis();}
 
 function renderTerminalCharts(candles,rsiVals,macdData,myData){
+  // Ensure canvases have explicit pixel dimensions
+  const cw=document.querySelector('.tm-chart-wrap');
+  const rw=document.querySelector('.tm-rsi-wrap');
+  const vw=document.querySelector('.tm-vol-wrap');
+  if(cw){const c=document.getElementById('tm-candle-chart');if(c){c.width=cw.clientWidth||800;c.height=cw.clientHeight||220;}}
+  if(rw){const c=document.getElementById('tm-rsi-chart');if(c){c.width=rw.clientWidth||800;c.height=rw.clientHeight||80;}}
+  if(vw){const c=document.getElementById('tm-vol-chart');if(c){c.width=vw.clientWidth||800;c.height=vw.clientHeight||60;}}
+
   // Candlestick (using bar chart to simulate candles)
   const labels=candles.map(c=>new Date(c.t*1000).toLocaleDateString('en-US',{month:'short',day:'numeric'}));
   const candleData=candles.map(c=>({x:new Date(c.t*1000).toLocaleDateString('en-US',{month:'short',day:'numeric'}),o:c.o,h:c.h,l:c.l,c:c.c}));
@@ -2381,7 +2517,8 @@ function generateDeepAnalysis(s,rsi,macd,macdSig,pattern,candles){
   const isSupport=s.type==='support';
   const isResistance=s.type==='resistance';
   const isAlert=s.type==='alert';
-  const isStopLoss=s.type==='stoploss';
+  const isStopLoss=s.type==='stoploss'||s.type==='sell_stop';
+  const isSell=s.isSell||s.type==='sell_tp'||s.type==='sell_resist'||s.type==='sell_trend'||s.type==='sell_stop';
   const rsiOverbought=rsi&&rsi>70;
   const rsiOversold=rsi&&rsi<30;
   const macdBullish=macd&&macdSig&&macd>macdSig;
@@ -2413,6 +2550,25 @@ function generateDeepAnalysis(s,rsi,macd,macdSig,pattern,candles){
       {title:'Rejection at Resistance',type:'bad',probability:50,steps:['Price touches resistance and reverses','Sellers overwhelm buyers here','Candle closes with a long upper wick'],outcome:'❌ Classic rejection — take profits or wait for break'},
       {title:'Coiling at Resistance',type:'neutral',probability:20,steps:['Price consolidates just below resistance','Tightening range','Breakout or breakdown coming soon'],outcome:'⚠️ Neutral — wait for the decision'}
     ];
+  } else if(isSell){
+    if(s.type==='sell_stop'){
+      scenarios=[
+        {title:'Stop Hit — Exit Immediately',type:'bad',probability:85,steps:['Price broke below your stop loss','Sellers are in control','Continued decline likely'],outcome:'🚨 Exit NOW — no exceptions'},
+        {title:'False Break & Reversal',type:'neutral',probability:15,steps:['Price quickly recovers above stop','Volume low on the break','Whipsaw move'],outcome:'⚠️ Even if it recovers — your stop was hit. Exit and re-evaluate.'}
+      ];
+    } else if(s.type==='sell_tp'){
+      scenarios=[
+        {title:'Trim Here & Let Rest Run',type:'good',probability:50,steps:['Sell 30–50% of position at target','Keep remaining shares with raised stop','Let winners run with house money'],outcome:'✅ Best risk management — lock gains, keep upside'},
+        {title:'Full Exit at Target',type:'good',probability:30,steps:['Close entire position at take profit','Bank full profit','Re-evaluate for re-entry on next dip'],outcome:'✅ Disciplined — you hit your target, take it'},
+        {title:'Price Blows Through Target',type:'neutral',probability:20,steps:['Momentum too strong to sell','Price keeps going higher','FOMO kicks in'],outcome:'⚠️ If it blows through, raise your stop — do not chase'}
+      ];
+    } else {
+      scenarios=[
+        {title:'Reduce Exposure Now',type:'good',probability:55,steps:['Sell 50% of position','Keep tight stop on remainder','Watch for signs of recovery'],outcome:'✅ Prudent — reduce risk while keeping some exposure'},
+        {title:'Full Exit',type:'neutral',probability:30,steps:['Close entire position','Remove all risk','Re-enter only on confirmed reversal'],outcome:'⚠️ Acceptable if conviction is low'},
+        {title:'Hold & Hope',type:'bad',probability:15,steps:['Do nothing','Position continues against you','Loss grows larger'],outcome:'❌ Worst option — the market does not care about your feelings'}
+      ];
+    }
   } else {
     scenarios=[
       {title:'Continuation of Current Move',type:'good',probability:40,steps:['Trend continues in current direction','Volume supports the move','Key levels hold'],outcome:`✅ Stay with the trend — ${s.dc>=0?'bulls':'bears'} in control`},
@@ -2491,6 +2647,39 @@ function generateDeepAnalysis(s,rsi,macd,macdSig,pattern,candles){
         {icon:'✅',text:'Confirm the bounce holds before committing capital'}
       ]}
     ];
+  } else if(isSell){
+    if(s.type==='sell_stop'){
+      practicalAdvice=[{title:`🚨 ${t} — Emergency Exit Protocol`,bg:'rgba(239,68,68,.1)',borderColor:'rgba(239,68,68,.4)',titleColor:'var(--red)',actions:[
+        {icon:'🚨',text:'Open your broker app RIGHT NOW'},
+        {icon:'🚨',text:`Place a market sell order for ALL shares of ${t}`},
+        {icon:'❌',text:'Do NOT wait for a bounce — the bounce may not come'},
+        {icon:'❌',text:'Do NOT move your stop lower — that is called "hoping"'},
+        {icon:'✅',text:'Once out, review what went wrong. Losing small is a win.'}
+      ]}];
+    } else if(s.type==='sell_tp'){
+      practicalAdvice=[
+        {title:`${t} hit target — here is my exit plan`,bg:'rgba(34,197,94,.06)',borderColor:'rgba(34,197,94,.2)',titleColor:'var(--green)',actions:[
+          {icon:'💰',text:'Sell 30–50% of your position at current price'},
+          {icon:'📏',text:'Raise your stop loss to your original entry price (risk-free trade)'},
+          {icon:'🎯',text:'Let remaining shares run with a trailing stop'},
+          {icon:'✅',text:'You planned this target — executing your plan is discipline, not greed'}
+        ]},
+        {title:'What to watch after trimming',bg:'rgba(245,158,11,.06)',borderColor:'rgba(245,158,11,.2)',titleColor:'var(--yellow)',actions:[
+          {icon:'👀',text:'Watch if price holds above your take profit level (now support)'},
+          {icon:'👀',text:'If volume picks up — the move may continue. Hold remaining shares.'},
+          {icon:'⚡',text:'If it starts fading — exit the rest. First target hit is a signal, not a guarantee.'}
+        ]}
+      ];
+    } else {
+      practicalAdvice=[
+        {title:`${t} — Reduce Risk Now`,bg:'rgba(239,68,68,.06)',borderColor:'rgba(239,68,68,.2)',titleColor:'var(--red)',actions:[
+          {icon:'📉',text:'The signal says reduce — sell 50% of your position today'},
+          {icon:'📏',text:'Tighten your stop loss to just below recent support'},
+          {icon:'👀',text:'Watch for 2–3 sessions — if trend reverses, you can re-add'},
+          {icon:'✅',text:'Reducing is not losing — it is protecting capital for better opportunities'}
+        ]}
+      ];
+    }
   } else {
     practicalAdvice=[
       {title:`My read on ${t} right now`,bg:'rgba(124,111,255,.08)',borderColor:'rgba(124,111,255,.2)',titleColor:'var(--accent2)',actions:[
@@ -2502,7 +2691,59 @@ function generateDeepAnalysis(s,rsi,macd,macdSig,pattern,candles){
     ];
   }
 
-  return{scenarios,probabilities,practicalAdvice};
+  // Generate entry/exit trigger for actionable section
+  const entryTrigger=generateTrigger(s,rsi,macd,macdSig,pattern);
+  return{scenarios,probabilities,practicalAdvice,entryTrigger};
+}
+
+function generateTrigger(s,rsi,macd,macdSig,pattern){
+  const t=s.ticker;
+  const isSell=s.isSell;
+  const myData=[...positions,...watchlist].find(p=>p.ticker===t);
+  const sup=myData&&parseFloat(myData.support)||0;
+  const res=myData&&parseFloat(myData.resistance)||0;
+  const sl=myData&&parseFloat(myData.stopLoss)||0;
+  const tp=myData&&parseFloat((myData.takeProfit||'').split('/')[0])||0;
+
+  if(isSell){
+    const exitPrice=sl||tp||s.price;
+    return{
+      type:'sell',
+      title:`Exit Trigger for ${t}`,
+      priceLabel:'Exit at',
+      price:exitPrice,
+      condition:sl&&s.price<sl?`Stop loss $${sl.toFixed(2)} already breached — exit immediately`:`When price hits $${exitPrice.toFixed(2)}`,
+      stop:null,
+      actions:[
+        {icon:'🚨',text:`Sell trigger: $${exitPrice.toFixed(2)}`},
+        {icon:'📋',text:sl?`Stop loss: $${sl.toFixed(2)}`:'No stop set — set one now'},
+        {icon:'💡',text:'Set a price alert at your exit level so you never miss it'}
+      ]
+    };
+  }
+
+  // Buy trigger
+  const entryPrice=sup&&s.price>sup*1.02?sup*1.02:s.price*0.97;
+  const stopPrice=sup?sup*0.985:s.price*0.95;
+  const targetPrice=res&&res>s.price?res:s.price*1.1;
+  const rr=stopPrice?(targetPrice-entryPrice)/(entryPrice-stopPrice):0;
+
+  return{
+    type:'buy',
+    title:`Entry Trigger for ${t}`,
+    priceLabel:'Buy when price hits',
+    price:entryPrice,
+    condition:s.type==='mover'?`First pullback candle closes above $${entryPrice.toFixed(2)} on volume`:s.type==='support'?`Price bounces from support $${sup.toFixed(2)} with a green candle`:s.type==='breakout'?`Retest of breakout level $${res.toFixed(2)} holds as support`:`Price reaches $${entryPrice.toFixed(2)}`,
+    stop:stopPrice,
+    target:targetPrice,
+    rr:rr>0?rr.toFixed(1):null,
+    actions:[
+      {icon:'🎯',text:`Entry: $${entryPrice.toFixed(2)} — ${s.type==='mover'?'wait for the pullback':'buy the confirmed signal'}`},
+      {icon:'📏',text:`Stop: $${stopPrice.toFixed(2)} — exit if this breaks`},
+      {icon:'💰',text:`Target: $${targetPrice.toFixed(2)}${rr>0?' ('+rr.toFixed(1)+'x R/R)':''}`},
+      {icon:'⚡',text:`Trigger: ${s.type==='mover'?'first strong green candle from base on volume':s.type==='support'?'bounce candle above support with volume':'confirmation candle on volume'}`}
+    ]
+  };
 }
 
 
