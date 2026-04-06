@@ -846,15 +846,25 @@ async function markLessonComplete(key){if(completedLessons.has(key))return;compl
 async function init(){
   try{apiKey=localStorage.getItem('ts_key')||'';}catch(e){}
   setLM('Loading portfolio...');
-  [positions,watchlist,notifications,priceCache,stockNotes]=await Promise.all([loadPositions(),loadWatch(),loadNotifications(),loadPrices(),loadNotes()]);
-  const savedKey=await getSetting('finnhub_key');
-  if(savedKey&&!apiKey){apiKey=savedKey;try{localStorage.setItem('ts_key',apiKey);}catch(e){}}
-  const savedOAKey=await getSetting('openai_key');
-  if(savedOAKey)openaiKey=savedOAKey;
-  const savedWC=await getSetting('widget_config');if(savedWC)try{Object.assign(widgetConfig,JSON.parse(savedWC));}catch(e){}
-  const savedOrder=await getSetting('widget_order');if(savedOrder)try{widgetOrder=JSON.parse(savedOrder);}catch(e){}
-  learnStreak=await loadLearnStreak();
-  completedLessons=await loadCompletedLessons();
+  const loadTimeout=new Promise(resolve=>setTimeout(()=>resolve([[], [], [], {}, {}]), 8000));
+  try{
+    const results=await Promise.race([
+      Promise.all([loadPositions(),loadWatch(),loadNotifications(),loadPrices(),loadNotes()]),
+      loadTimeout
+    ]);
+    [positions,watchlist,notifications,priceCache,stockNotes]=results;
+  }catch(e){
+    console.warn('DB load failed, starting offline:',e);
+    [positions,watchlist,notifications,priceCache,stockNotes]=[[],[],[],{},{}];
+  }
+  let sk=null,oak=null,swc=null,sor=null;
+  try{[sk,oak,swc,sor]=await Promise.all([getSetting('finnhub_key'),getSetting('openai_key'),getSetting('widget_config'),getSetting('widget_order')]);}catch(e){}
+  if(sk&&!apiKey){apiKey=sk;try{localStorage.setItem('ts_key',apiKey);}catch(e){}}
+  if(oak)openaiKey=oak;
+  if(swc)try{Object.assign(widgetConfig,JSON.parse(swc));}catch(e){}
+  if(sor)try{widgetOrder=JSON.parse(sor);}catch(e){}
+  try{learnStreak=await loadLearnStreak();}catch(e){}
+  try{completedLessons=await loadCompletedLessons();}catch(e){}
   currentLesson=getTodayLesson();
   setSyncStatus('ok');
   updateNotifBadge();
