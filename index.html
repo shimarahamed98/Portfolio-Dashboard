@@ -1594,6 +1594,7 @@ function renderOwned(container){
         <td>${bdg(p.nextAction,{Hold:'b-gray','Buy more':'b-green',Trim:'b-yellow',Exit:'b-red'})}</td>
         <td>${apills(p)}</td>
         <td>${trendBdg(p.trend)}</td>
+        <td><button onclick="event.stopPropagation();openSellModal('${esc(p.ticker)}',${idx})" style="padding:5px 10px;border-radius:6px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--red);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">💸 Sell</button></td>
       </tr>`;
     } else {
       // Multiple legs — render grouped header + collapsible legs
@@ -1640,6 +1641,7 @@ function renderOwned(container){
           <td>${bdg(p.nextAction,{Hold:'b-gray','Buy more':'b-green',Trim:'b-yellow',Exit:'b-red'})}</td>
           <td>${apills(p)}</td>
           <td>${trendBdg(p.trend)}</td>
+          <td><button onclick="event.stopPropagation();openSellModal('${esc(p.ticker)}',${idx})" style="padding:5px 10px;border-radius:6px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--red);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap">💸 Sell</button></td>
         </tr>`;
       });
     }
@@ -1745,7 +1747,7 @@ function renderDrawerTab(){
       </div>
       <div style="display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap">
         <button class="btn primary" onclick="closeDrawer();openModalEdit(${currentDrawerPos})">✏️ Edit position</button>
-        <button class="btn danger sm" onclick="openSellModal('${esc(p.ticker)}')">💸 Sell</button>
+        <button class="btn danger sm" onclick="openSellModal('${esc(p.ticker)}',${currentDrawerPos})">💸 Sell</button>
         <button class="btn danger" onclick="deletePosConfirm(${currentDrawerPos})">Delete</button>
       </div>`;
   }else if(currentDrawerTab==='plan'){
@@ -3645,15 +3647,17 @@ async function addQuickTradeToWatchlist(setup){
 let sellModalState={posIdx:-1,ticker:'',shares:0,avgBuy:0,pct:100};
 const SUPABASE_TRADE_HISTORY=SUPABASE_URL+'/rest/v1/trade_history';
 
-function openSellModal(ticker){
-  const pos=positions.find(p=>p.ticker===ticker);
-  if(!pos){toast('Position not found','t-error');return;}
-  const idx=positions.indexOf(pos);
-  const c=priceCache[ticker]?.current||parseFloat(pos.avgBuy)||0;
-  const shares=parseFloat(pos.shares)||0;
-  sellModalState={posIdx:idx,ticker,shares,avgBuy:parseFloat(pos.avgBuy)||0,pct:100,price:c};
+function openSellModal(ticker,posIdx){
+  // posIdx can be passed directly for grouped positions, otherwise find first match
+  var idx=posIdx!==undefined?posIdx:positions.findIndex(function(p){return p.ticker===ticker;});
+  if(idx<0){toast('Position not found','t-error');return;}
+  var pos=positions[idx];
+  var c=priceCache[ticker]&&priceCache[ticker].current?priceCache[ticker].current:parseFloat(pos.avgBuy)||0;
+  var shares=parseFloat(pos.shares)||0;
+  var avgBuy=parseFloat(pos.avgBuy)||0;
+  sellModalState={posIdx:idx,ticker:ticker,shares:shares,avgBuy:avgBuy,pct:100,price:c};
   document.getElementById('sellModalTicker').textContent=ticker+' — Sell Position';
-  document.getElementById('sellModalMeta').textContent=shares+' shares · Avg buy $'+sellModalState.avgBuy.toFixed(2)+' · Current $'+c.toFixed(2);
+  document.getElementById('sellModalMeta').textContent=shares.toFixed(4)+' shares · Avg $'+avgBuy.toFixed(2)+' · Current $'+c.toFixed(2)+' · P/L: '+(c&&avgBuy?((c-avgBuy)/avgBuy*100).toFixed(1)+'%':'—');
   renderSellModalBody();
   document.getElementById('sellModalOverlay').style.display='flex';
 }
@@ -3702,37 +3706,70 @@ async function confirmSell(){
   const s=sellModalState;
   if(s.posIdx<0)return;
   const pos=positions[s.posIdx];
+  if(!pos){toast('Position not found','t-error');return;}
+
   const sharesToSell=s.shares*(s.pct/100);
-  const sellPrice=s.price||priceCache[s.ticker]?.current||s.avgBuy;
+  const sellPrice=parseFloat(document.getElementById('sellPriceIn')?.value)||s.price||priceCache[s.ticker]?.current||s.avgBuy||0;
   const proceeds=sharesToSell*sellPrice;
-  const cost=sharesToSell*s.avgBuy;
+  const cost=sharesToSell*(s.avgBuy||0);
   const pl=proceeds-cost;
   const plPct=cost?pl/cost*100:0;
   const reason=(document.getElementById('sellReasonIn')?.value||'').trim();
 
-  try{
-    // Log to trade_history
-    await fetch(SUPABASE_TRADE_HISTORY,{method:'POST',headers:{...H,'Prefer':'return=minimal'},
-      body:JSON.stringify({ticker:s.ticker,shares_sold:sharesToSell,sell_price:sellPrice,avg_buy_price:s.avgBuy,pl_dollars:pl,pl_pct:plPct,reason:reason||null})});
+  // Disable confirm button to prevent double-tap
+  const confirmBtn=document.querySelector('.sell-modal button[onclick="confirmSell()"]');
+  if(confirmBtn){confirmBtn.disabled=true;confirmBtn.textContent='Processing...';}
 
-    // Update position
+  try{
+    // 1. Log to trade_history
+    try{
+      await fetch(SUPABASE_TRADE_HISTORY,{method:'POST',
+        headers:Object.assign({},H,{'Prefer':'return=minimal'}),
+        body:JSON.stringify({ticker:s.ticker,shares_sold:sharesToSell,sell_price:sellPrice,
+          avg_buy_price:s.avgBuy||0,pl_dollars:pl,pl_pct:plPct,reason:reason||null})});
+    }catch(e){console.log('Trade history log failed (non-critical):',e);}
+
+    // 2. Update or delete the position using proper helpers
     if(s.pct===100){
-      // Full exit — delete position
-      await fetch(SUPABASE_URL+'/rest/v1/positions?id=eq.'+pos.id,{method:'DELETE',headers:H});
+      // Full exit — use delPos helper which handles the data column correctly
+      await delPos(pos);
       positions.splice(s.posIdx,1);
-      toast('✓ Position closed — P/L: '+(pl>=0?'+':'')+'$'+fmt(pl),'t-success');
+      // Clean up price cache entry to avoid stale signals
+      toast('✓ '+s.ticker+' position closed — P/L: '+(pl>=0?'+':'')+'$'+fmt(pl),'t-success');
     } else {
-      // Partial sell — update shares
-      const newShares=s.shares-sharesToSell;
-      const updated={...pos,shares:newShares.toFixed(6)};
-      await fetch(SUPABASE_URL+'/rest/v1/positions?id=eq.'+pos.id,{method:'PATCH',headers:{...H,'Prefer':'return=representation'},body:JSON.stringify({shares:newShares.toFixed(6)})});
-      positions[s.posIdx]={...pos,shares:newShares.toFixed(6)};
+      // Partial sell — update shares using savePos helper
+      const newShares=parseFloat((s.shares-sharesToSell).toFixed(6));
+      const updatedPos=Object.assign({},pos,{shares:String(newShares)});
+      const saved=await savePos(updatedPos);
+      positions[s.posIdx]=saved;
       toast('✓ Sold '+s.pct+'% of '+s.ticker+' — P/L: '+(pl>=0?'+':'')+'$'+fmt(pl),'t-success');
     }
+
+    // 3. Close modal
     closeSellModal();
-    if(page==='portfolio')renderPortfolio();
-    if(page==='dashboard')go('dashboard');
-  }catch(e){toast('Error processing sell: '+e.message,'t-error');}
+    closeDrawer();
+
+    // 4. Refresh ALL views that show position data
+    // Re-render current page
+    go(page);
+
+    // 5. If there are scanner signals for this ticker, clear stale ones
+    if(s.pct===100){
+      // Remove from scan results if fully exited
+      tiScanResults=tiScanResults.filter(function(r){return r.ticker!==s.ticker;});
+      // Clear price cache signals
+      if(notifiedSignals){
+        Object.keys(notifiedSignals).forEach(function(k){
+          if(k.startsWith(s.ticker+'_'))delete notifiedSignals[k];
+        });
+      }
+    }
+
+  }catch(e){
+    console.error('confirmSell error:',e);
+    toast('Error processing sell: '+e.message,'t-error');
+    if(confirmBtn){confirmBtn.disabled=false;confirmBtn.textContent=s.pct===100?'Exit Full Position':'Sell '+s.pct+'% of Position';}
+  }
 }
 
 function closeSellModal(){document.getElementById('sellModalOverlay').style.display='none';}
