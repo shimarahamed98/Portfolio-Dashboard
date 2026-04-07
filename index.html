@@ -4147,60 +4147,89 @@ function renderTITab(){
 
 // ── SCANNER TAB ──
 function renderTIScanner(el){
-  const hasResults=tiScanResults.length>0;
-  const master=getMasterRegime();
-  const btcR=getBTCRegime();
-  el.innerHTML=`
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:1rem;flex-wrap:wrap">
-      <div style="display:flex;gap:6px;align-items:center">
-        <span class="regime-${master==='GREEN'?'green':master==='YELLOW'?'yellow':'red'}">${master==='GREEN'?'🟢':master==='YELLOW'?'🟡':'🔴'} Market: ${master}</span>
-        <span class="regime-${btcR==='GREEN'?'green':btcR==='YELLOW'?'yellow':'red'}">${btcR==='GREEN'?'₿🟢':btcR==='YELLOW'?'₿🟡':'₿🔴'} BTC: ${btcR}</span>
-      </div>
-      <button class="btn primary sm" id="tiScanBtn" onclick="startTIScan()" style="margin-left:auto">⚡ Run Scan</button>
-    </div>
-    ${!hasResults?`<div class="ti-section" style="text-align:center;padding:2rem"><div style="font-size:32px;margin-bottom:.75rem">🔬</div><div style="font-weight:600;margin-bottom:.5rem">Ready to scan</div><div class="muted" style="font-size:13px;margin-bottom:1rem">Fetches live prices from Finnhub, calculates 5/10/20-day MAs, ATR, volume ratios, then scores every stock across 7 factors. Requires your Finnhub API key.</div><button class="btn primary" onclick="startTIScan()">⚡ Run full scan now</button></div>`:''}
-    <div id="tiScanList">
-      ${tiScanResults.map((r,i)=>renderTIStockCard(r,i)).join('')}
-    </div>
-    ${hasResults?`<div style="font-size:11px;color:var(--text3);text-align:center;margin-top:1rem">Sorted by: BUY first → Composite score → Tap any row to expand full breakdown</div>`:''}`;
+  var hasResults=tiScanResults.length>0;
+  var master=getMasterRegime();
+  var btcR=getBTCRegime();
+  var masterColor=master==='GREEN'?'green':master==='YELLOW'?'yellow':'red';
+  var btcColor=btcR==='GREEN'?'green':btcR==='YELLOW'?'yellow':'red';
+  var masterIcon=master==='GREEN'?'🟢':master==='YELLOW'?'🟡':'🔴';
+  var btcIcon=btcR==='GREEN'?'₿🟢':btcR==='YELLOW'?'₿🟡':'₿🔴';
+
+  var html='';
+  // Header row
+  html+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:1rem;flex-wrap:wrap">';
+  html+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">';
+  html+='<span class="regime-'+masterColor+'">'+masterIcon+' Market: '+master+'</span>';
+  html+='<span class="regime-'+btcColor+'">'+btcIcon+' BTC: '+btcR+'</span>';
+  html+='</div>';
+  html+='<button class="btn primary sm" id="tiScanBtn" onclick="startTIScan()" style="margin-left:auto">⚡ Run Scan</button>';
+  html+='</div>';
+
+  // Empty state
+  if(!hasResults){
+    html+='<div class="ti-section" style="text-align:center;padding:2rem">';
+    html+='<div style="font-size:32px;margin-bottom:.75rem">🔬</div>';
+    html+='<div style="font-weight:600;margin-bottom:.5rem">Ready to scan</div>';
+    html+='<div class="muted" style="font-size:13px;margin-bottom:1rem">Fetches live prices, calculates MAs/ATR, checks SEC filings, scores every stock. Requires your Finnhub API key.</div>';
+    html+='<button class="btn primary" onclick="startTIScan()">⚡ Run full scan now</button>';
+    html+='</div>';
+  }
+
+  // Results list
+  html+='<div id="tiScanList">';
+  if(hasResults){
+    for(var i=0;i<tiScanResults.length;i++){
+      html+=renderTIStockCard(tiScanResults[i],i);
+    }
+    html+='</div>';
+    html+='<div style="font-size:11px;color:var(--text3);text-align:center;margin-top:1rem">Sorted: BUY first → Composite score · Tap any card to expand full breakdown</div>';
+  } else {
+    html+='</div>';
+  }
+
+  el.innerHTML=html;
 }
 
 function renderTIStockCard(r,i){
-  const actionClass=r.action==='BUY'?'action-buy':r.action==='WAIT'?'action-wait':'action-avoid';
-  const actionColor=r.action==='BUY'?'#22c55e':r.action==='WAIT'?'#f59e0b':'#ef4444';
-  const isExpanded=tiExpandedTicker===r.ticker;
-  const scorePct=r.composite||0;
-  return`<div class="ti-stock-card" style="border-left:3px solid ${actionColor}" onclick="expandTICard('${r.ticker}')">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-      <span style="font-weight:800;font-size:16px">${esc(r.ticker)}</span>
-      <span class="${actionClass}">${r.action}</span>
-      ${r.isBTC?'<span class="badge b-yellow" style="font-size:10px">₿ BTC-linked</span>':''}
-      <span class="risk-${r.riskLabel?.includes('Lower')?'lower':r.riskLabel?.includes('Moderate')?'moderate':'high'}" style="margin-left:auto">${r.riskLabel||'—'}</span>
-    </div>
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-      <div style="flex:1">
-        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
-          <span style="color:var(--text3);font-weight:700">Composite Score</span>
-          <span style="font-weight:800;color:${actionColor}">${scorePct}/100</span>
-        </div>
-        <div class="score-bar"><div class="score-bar-fill" style="width:${scorePct}%;background:${actionColor}"></div></div>
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div style="font-size:10px;color:var(--text3)">Confidence</div>
-        <div style="font-weight:800;color:${actionColor}">${r.confidence}/10</div>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">
-      <div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Price</div><div style="font-weight:700;font-size:13px">$${r.data&&r.data.price?(r.data.price).toFixed(2):'—'}</div></div>
-      <div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Entry</div><div style="font-weight:700;font-size:13px;color:#22c55e">$${r.levels&&r.levels.entryAssumed?(r.levels.entryAssumed).toFixed(2):'—'}</div></div>
-      <div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Stop</div><div style="font-weight:700;font-size:13px;color:#ef4444">$${r.levels&&r.levels.stopLoss?(r.levels.stopLoss).toFixed(2):'—'}</div></div>
-      <div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Target</div><div style="font-weight:700;font-size:13px;color:#22c55e">$${r.levels&&r.levels.t1?(r.levels.t1).toFixed(2):'—'}</div></div>
-    </div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:4px">Setup: <strong style="color:var(--text)">${r.setupType||'—'}</strong> · R/R: <strong style="color:${actionColor}">${(r.levels&&r.levels.rr1?r.levels.rr1:0).toFixed(1)}x</strong> · ${r.isBTC?'BTC Regime: <strong>'+btcR+'</strong>':'Master: <strong>'+getMasterRegime()+'</strong>'}</div>
-    ${isExpanded?renderTICardExpanded(r):'<div style="font-size:11px;color:var(--accent2);margin-top:4px">▼ Tap to expand full breakdown</div>'}
-  </div>`;
+  var ac=r.action==='BUY'?'action-buy':r.action==='WAIT'?'action-wait':'action-avoid';
+  var aColor=r.action==='BUY'?'#22c55e':r.action==='WAIT'?'#f59e0b':'#ef4444';
+  var expanded=tiExpandedTicker===r.ticker;
+  var score=r.composite||0;
+  var px=r.data&&r.data.price?'$'+r.data.price.toFixed(2):'—';
+  var en=r.levels&&r.levels.entryAssumed?'$'+r.levels.entryAssumed.toFixed(2):'—';
+  var sl=r.levels&&r.levels.stopLoss?'$'+r.levels.stopLoss.toFixed(2):'—';
+  var tg=r.levels&&r.levels.t1?'$'+r.levels.t1.toFixed(2):'—';
+  var rr=r.levels&&r.levels.rr1?r.levels.rr1.toFixed(1):'0.0';
+  var rl=r.riskLabel||'High Risk';
+  var rlc=rl.includes('Lower')?'lower':rl.includes('Moderate')?'moderate':'high';
+  var regime=r.isBTC?('BTC: '+getBTCRegime()):('Market: '+getMasterRegime());
+  var h='<div class="ti-stock-card" style="border-left:3px solid '+aColor+';cursor:pointer" onclick="expandTICard(this.getAttribute(\'data-ticker\'))" data-ticker="'+r.ticker+'">'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">'+
+    '<span style="font-weight:800;font-size:16px">'+esc(r.ticker)+'</span>'+
+    '<span class="'+ac+'">'+r.action+'</span>'+
+    (r.isBTC?'<span class="badge b-yellow" style="font-size:10px">₿ BTC</span>':'')+
+    '<span class="risk-'+rlc+'" style="margin-left:auto">'+rl+'</span>'+
+    '</div>'+
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
+    '<div style="flex:1">'+
+    '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">'+
+    '<span style="color:var(--text3);font-weight:700">Score</span>'+
+    '<span style="font-weight:800;color:'+aColor+'">'+score+'/100</span></div>'+
+    '<div class="score-bar"><div class="score-bar-fill" style="width:'+score+'%;background:'+aColor+'"></div></div></div>'+
+    '<div style="text-align:right;flex-shrink:0">'+
+    '<div style="font-size:10px;color:var(--text3)">Confidence</div>'+
+    '<div style="font-weight:800;color:'+aColor+'">'+(r.confidence||0)+'/10</div></div></div>'+
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">'+
+    '<div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Price</div><div style="font-weight:700;font-size:13px">'+px+'</div></div>'+
+    '<div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Entry</div><div style="font-weight:700;font-size:13px;color:#22c55e">'+en+'</div></div>'+
+    '<div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Stop</div><div style="font-weight:700;font-size:13px;color:#ef4444">'+sl+'</div></div>'+
+    '<div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Target</div><div style="font-weight:700;font-size:13px;color:#22c55e">'+tg+'</div></div>'+
+    '</div>'+
+    '<div style="font-size:12px;color:var(--text3);margin-bottom:4px">Setup: <strong style="color:var(--text)">'+(r.setupType||'—')+'</strong> · R/R: <strong style="color:'+aColor+'">'+rr+'x</strong> · '+regime+'</div>'+
+    (expanded?renderTICardExpanded(r):'<div style="font-size:11px;color:var(--accent2);margin-top:4px">▼ Tap to expand full breakdown</div>')+
+    '</div>';
+  return h;
 }
-
 function renderTICardExpanded(r){
   const s=r.scores||{};
   const l=r.levels||{};
@@ -4238,9 +4267,14 @@ function renderTICardExpanded(r){
 }
 
 function expandTICard(ticker){
+  if(!ticker)return;
   tiExpandedTicker=tiExpandedTicker===ticker?null:ticker;
-  const el=document.getElementById('tiScanList');
-  if(el)el.innerHTML=tiScanResults.map((r,i)=>renderTIStockCard(r,i)).join('');
+  var el=document.getElementById('tiScanList');
+  if(el){
+    var html='';
+    for(var i=0;i<tiScanResults.length;i++)html+=renderTIStockCard(tiScanResults[i],i);
+    el.innerHTML=html;
+  }
 }
 
 async function startTIScan(){
