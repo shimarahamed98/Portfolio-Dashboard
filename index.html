@@ -3775,10 +3775,10 @@ let tiTab='scanner'; // settings|universe|regime|newslog|scanner|tradelog
 let tiSettings={
   capital:3500,maxRiskPct:0.0175,target1Pct:0.025,target2Pct:0.04,
   hardStopPct:0.0175,maxHoldDays:5,noChaseAbovePct:0.01,minRR:1.5,
-  minPrice:5,maxPrice:25,minAvgDolVol:10000000,minAvgShareVol:1500000,
-  maxSpreadPct:0.005,minRelVol:1.2,avoidEarningsDays:3,
+  minPrice:1,maxPrice:500,minAvgDolVol:5000000,minAvgShareVol:500000,
+  maxSpreadPct:0.01,minRelVol:1.0,avoidEarningsDays:3,
   wTradability:15,wCatalyst:20,wRegime:15,wTrend:15,wEntry:15,wRR:10,wEvent:10,
-  buyThreshold:80,watchThreshold:65
+  buyThreshold:75,watchThreshold:55
 };
 let tiUniverse=[
   {ticker:'ASST',company:'Strive Asset Mgmt',sector:'Finance',theme:'BTC Treasury',linkage:'BTC',notes:'Reacts to BTC + treasury updates'},
@@ -3892,7 +3892,11 @@ async function fetchRegimeData(){
       if(d&&d.c>0){
         const to=Math.floor(Date.now()/1000);
         const from=Math.floor((Date.now()-30*86400000)/1000);
-        const cr=await fetch('https://finnhub.io/api/v1/stock/candle?symbol='+encodeURIComponent(sym==='BINANCE:BTCUSDT'?sym:sym)+'&resolution=D&from='+from+'&to='+to+'&token='+apiKey);
+        const isCrypto=sym==='BINANCE:BTCUSDT';
+        const candleUrl=isCrypto
+          ?'https://finnhub.io/api/v1/crypto/candle?symbol='+encodeURIComponent(sym)+'&resolution=D&from='+from+'&to='+to+'&token='+apiKey
+          :'https://finnhub.io/api/v1/stock/candle?symbol='+encodeURIComponent(sym)+'&resolution=D&from='+from+'&to='+to+'&token='+apiKey;
+        const cr=await fetch(candleUrl);
         const cd=await cr.json();
         const closes=cd.s==='ok'?cd.c:[];
         const sma=(arr,n)=>arr.length>=n?arr.slice(-n).reduce((a,b)=>a+b,0)/n:null;
@@ -3930,7 +3934,8 @@ function getMasterRegime(){
 }
 
 function getBTCRegime(){
-  const btc=tiRegimeData['BINANCE:BTCUSDT'];
+  // Try both possible keys
+  const btc=tiRegimeData['BINANCE:BTCUSDT']||tiRegimeData['BTC']||tiRegimeData['BTCUSDT'];
   if(!btc)return'YELLOW';
   if(btc.flag==='FAVORABLE')return'GREEN';
   if(btc.flag==='RISK_OFF')return'RED';
@@ -4070,21 +4075,32 @@ async function runTIScan(){
   // Fetch regime first
   await fetchRegimeData();
   // Process each stock sequentially to stay within rate limits
-  for(const u of universe){
+  for(let ui=0;ui<universe.length;ui++){
+    const u=universe[ui];
+    // Update progress
+    const prog=document.getElementById('tiScanProgress');
+    if(prog)prog.textContent='Scanning '+u.ticker+' ('+( ui+1)+'/'+universe.length+')...';
     const data=await fetchTIStockData(u.ticker);
-    if(!data){results.push({ticker:u.ticker,error:true,universe:u});continue;}
-    // Check SEC in parallel for BTC-linked
+    if(!data){
+      console.log('TI: No data for',u.ticker);
+      results.push({ticker:u.ticker,error:true,universe:u});
+      await new Promise(r=>setTimeout(r,200));
+      continue;
+    }
+    // Check SEC only for BTC-linked (saves API calls)
     let dilution=false;
-    if(u.linkage==='BTC')dilution=await checkSECFiling(u.ticker);
-    // Get news entry
+    if(u.linkage==='BTC'){
+      try{dilution=await checkSECFiling(u.ticker);}catch(e){}
+    }
     const news=tiNewsLog.find(n=>n.ticker===u.ticker);
     if(news&&dilution)news.dilutionFlag=true;
     const score=scoreStock(data,u,news);
     score.universe=u;
+    console.log('TI scored:',u.ticker,'→',score.action,'('+score.composite+')');
     results.push(score);
-    await new Promise(r=>setTimeout(r,300)); // 300ms between calls to stay safe
+    await new Promise(r=>setTimeout(r,300));
   }
-  tiScanResults=results.filter(r=>!r.error).sort((a,b)=>{
+  tiScanResults=results.filter(r=>!r.error&&r.composite!==undefined).sort((a,b)=>{
     const ao=a.action==='BUY'?0:a.action==='WAIT'?1:2;
     const bo=b.action==='BUY'?0:b.action==='WAIT'?1:2;
     if(ao!==bo)return ao-bo;
@@ -4135,7 +4151,7 @@ function renderTIScanner(el){
       </div>
       <button class="btn primary sm" id="tiScanBtn" onclick="startTIScan()" style="margin-left:auto">⚡ Run Scan</button>
     </div>
-    ${!hasResults?`<div class="ti-section" style="text-align:center;padding:2rem"><div style="font-size:32px;margin-bottom:.75rem">🔬</div><div style="font-weight:600;margin-bottom:.5rem">Ready to scan</div><div class="muted" style="font-size:13px;margin-bottom:1rem">Fetches live prices, calculates MAs/ATR, checks SEC filings, scores every stock in your universe.</div><button class="btn primary" onclick="startTIScan()">⚡ Run full scan now</button></div>`:''}
+    ${!hasResults?`<div class="ti-section" style="text-align:center;padding:2rem"><div style="font-size:32px;margin-bottom:.75rem">🔬</div><div style="font-weight:600;margin-bottom:.5rem">Ready to scan</div><div class="muted" style="font-size:13px;margin-bottom:1rem">Fetches live prices from Finnhub, calculates 5/10/20-day MAs, ATR, volume ratios, then scores every stock across 7 factors. Requires your Finnhub API key.</div><button class="btn primary" onclick="startTIScan()">⚡ Run full scan now</button></div>`:''}
     <div id="tiScanList">
       ${tiScanResults.map((r,i)=>renderTIStockCard(r,i)).join('')}
     </div>
@@ -4168,10 +4184,10 @@ function renderTIStockCard(r,i){
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">
-      <div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Price</div><div style="font-weight:700;font-size:13px">$${(r.data?.price||0).toFixed(2)}</div></div>
-      <div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Entry</div><div style="font-weight:700;font-size:13px;color:#22c55e">$${(r.levels?.entryAssumed||0).toFixed(2)}</div></div>
-      <div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Stop</div><div style="font-weight:700;font-size:13px;color:#ef4444">$${(r.levels?.stopLoss||0).toFixed(2)}</div></div>
-      <div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Target1</div><div style="font-weight:700;font-size:13px;color:#22c55e">$${(r.levels?.t1||0).toFixed(2)}</div></div>
+      <div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Price</div><div style="font-weight:700;font-size:13px">$${r.data&&r.data.price?(r.data.price).toFixed(2):'—'}</div></div>
+      <div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Entry</div><div style="font-weight:700;font-size:13px;color:#22c55e">$${r.levels&&r.levels.entryAssumed?(r.levels.entryAssumed).toFixed(2):'—'}</div></div>
+      <div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Stop</div><div style="font-weight:700;font-size:13px;color:#ef4444">$${r.levels&&r.levels.stopLoss?(r.levels.stopLoss).toFixed(2):'—'}</div></div>
+      <div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Target</div><div style="font-weight:700;font-size:13px;color:#22c55e">$${r.levels&&r.levels.t1?(r.levels.t1).toFixed(2):'—'}</div></div>
     </div>
     <div style="font-size:12px;color:var(--text3);margin-bottom:4px">Setup: <strong style="color:var(--text)">${r.setupType||'—'}</strong> · R/R: <strong style="color:${actionColor}">${(r.levels?.rr1||0).toFixed(1)}x</strong> · ${r.isBTC?'BTC Regime: <strong>'+btcR+'</strong>':'Master: <strong>'+getMasterRegime()+'</strong>'}</div>
     ${isExpanded?renderTICardExpanded(r):'<div style="font-size:11px;color:var(--accent2);margin-top:4px">▼ Tap to expand full breakdown</div>'}
@@ -4224,8 +4240,21 @@ async function startTIScan(){
   const btn=document.getElementById('tiScanBtn');
   if(btn){btn.textContent='Scanning...';btn.disabled=true;}
   const el=document.getElementById('tiScanList');
-  if(el)el.innerHTML=`<div class="ti-section" style="text-align:center;padding:2rem"><div style="font-size:28px;margin-bottom:.5rem;animation:spin 1s linear infinite">⏳</div><div style="font-size:13px;color:var(--text3)">Fetching live data for ${getTIUniverse().length} stocks + regime data + SEC filings...<br>This takes ~${getTIUniverse().length*0.5+5} seconds.</div></div>`;
-  await runTIScan();
+  const universe=getTIUniverse();
+  if(!apiKey){
+    if(el)el.innerHTML='<div class="ti-section" style="text-align:center;padding:2rem;color:var(--yellow)">⚠️ No Finnhub API key set. Go to Settings and add your key first.</div>';
+    if(btn){btn.textContent='⚡ Run Scan';btn.disabled=false;}
+    return;
+  }
+  if(el)el.innerHTML='<div class="ti-section" style="text-align:center;padding:2rem"><div style="font-size:28px;margin-bottom:.5rem">⏳</div><div style="font-size:13px;color:var(--text3)">Fetching live data for '+universe.length+' stocks...<br>This takes ~'+Math.round(universe.length*0.5+5)+' seconds.</div><div id="tiScanProgress" style="margin-top:1rem;font-size:12px;color:var(--accent2)"></div></div>';
+  try{
+    await runTIScan();
+  }catch(e){
+    console.error('TI Scan error:',e);
+    if(el)el.innerHTML='<div class="ti-section" style="color:var(--red);padding:1rem">Scan error: '+e.message+'<br><br>Check console for details.</div>';
+    if(btn){btn.textContent='⚡ Run Scan';btn.disabled=false;}
+    return;
+  }
   renderTradeIntelligence();
 }
 
