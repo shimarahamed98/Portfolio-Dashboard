@@ -355,7 +355,8 @@ tr.leg-row.hidden{display:none}
 .mobile-tabs{display:none;position:fixed;bottom:0;left:0;right:0;height:var(--mob-tab);background:var(--bg2);border-top:1px solid var(--border);z-index:300}
 .mob-tabs-inner{display:flex;height:100%}
 .mob-tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:var(--text3);transition:color .15s;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;position:relative;padding-bottom:2px}
-.mob-tab.active{color:var(--accent2)}
+.mob-tab.active{color:var(--accent2);font-weight:700}
+.mob-tab.active .mob-tab-icon{transform:scale(1.15);transition:transform .15s}
 .mob-tab-icon{font-size:18px;line-height:1}
 .mob-badge{position:absolute;top:7px;right:calc(50% - 16px);background:var(--red);color:#fff;border-radius:20px;padding:1px 5px;font-size:9px;font-weight:800;display:none}
 .mob-badge.show{display:block}
@@ -566,12 +567,14 @@ tr.leg-row.hidden{display:none}
     <div class="nav-item" id="nav-notifications" onclick="go('notifications')"><span class="nav-icon">📬</span><span class="nav-label">Notifications</span><span class="nav-badge" id="navNotifBadge" style="display:none">0</span></div>
     <div class="nav-group">Insights</div>
     <div class="nav-item" id="nav-analytics" onclick="go('analytics')"><span class="nav-icon">📊</span><span class="nav-label">Analytics</span></div>
-    <div class="nav-group">System</div>
+    <div class="nav-group">Trading Tools</div>
+    <div class="nav-item" id="nav-ti" onclick="go('ti')"><span class="nav-icon">🧠</span><span class="nav-label">Trade Intel</span></div>
     <div class="nav-item" id="nav-trades" onclick="go('trades')"><span class="nav-icon">⚡</span><span class="nav-label">Quick Trades</span></div>
     <div class="nav-item" id="nav-charts" onclick="go('charts')"><span class="nav-icon">📈</span><span class="nav-label">Charts</span></div>
+    <div class="nav-group">System</div>
     <div class="nav-item" id="nav-ai" onclick="go('ai')"><span class="nav-icon">🤖</span><span class="nav-label">AI Advisor</span></div>
     <div class="nav-item" id="nav-settings" onclick="go('settings')"><span class="nav-icon">⚙️</span><span class="nav-label">Settings</span></div>
-    <div class="sb-footer">v4.0 · Supabase sync</div>
+    <div class="sb-footer" style="display:flex;align-items:center;justify-content:space-between">v4.0 · Supabase sync<button onclick="logOut()" style="background:none;border:none;color:var(--text3);font-size:10px;cursor:pointer;padding:2px 6px;border-radius:4px;transition:color .15s" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--text3)'">🔒 Logout</button></div>
   </div>
   <div class="sb-overlay" id="sbOverlay" onclick="closeSB()"></div>
 
@@ -962,7 +965,8 @@ async function bootApp(){
   setSyncStatus('ok');
   updateNotifBadge();
   hideLoading();
-  go('dashboard');
+  const startPage=restoreLastPage();
+  go(startPage);
   if(apiKey&&positions.length)refreshPrices();
   setInterval(checkAlerts,60000);
   setInterval(checkSellAlerts,60000);
@@ -1022,11 +1026,39 @@ function closeSB(){sidebarOpen=false;document.getElementById('sidebar').classLis
 // ── NAV ──
 function go(p){
   page=p;
-  ['dashboard','portfolio','alerts','scanner','learn','notifications','analytics','settings'].forEach(id=>{document.getElementById('nav-'+id)?.classList.toggle('active',id===p);document.getElementById('mob-'+id)?.classList.toggle('active',id===p);});
-  const titles={dashboard:'Dashboard',portfolio:'Portfolio',alerts:'Alerts',scanner:'Market Scanner',learn:'Learn Trading',notifications:'Notifications',analytics:'Analytics',settings:'Settings'};
-  document.getElementById('pageTitle').textContent=titles[p]||p;
-  document.getElementById('addBtn')&&(document.getElementById('addBtn').style.display=(p==='portfolio'||p==='dashboard')?'':'none');
-  Object.values(charts).forEach(c=>{try{c.destroy();}catch(e){}});charts={};
+  // Update URL hash for persistence on refresh
+  try{if(location.hash!=='#'+p)history.replaceState(null,'','#'+p);}catch(e){}
+  // Save to localStorage as fallback
+  try{localStorage.setItem('lastPage',p);}catch(e){}
+
+  // All known page IDs — active highlight for ALL pages
+  const ALL_PAGES=['dashboard','portfolio','alerts','scanner','learn','notifications','analytics','settings','ai','ti','trades','charts'];
+  ALL_PAGES.forEach(function(id){
+    const nav=document.getElementById('nav-'+id);
+    const mob=document.getElementById('mob-'+id);
+    const active=id===p;
+    if(nav){nav.classList.toggle('active',active);}
+    if(mob){mob.classList.toggle('active',active);}
+  });
+
+  // Page titles
+  const titles={
+    dashboard:'Dashboard',portfolio:'Portfolio',alerts:'Alerts',
+    scanner:'Market Scanner',learn:'Learn Trading',notifications:'Notifications',
+    analytics:'Analytics',settings:'Settings',ai:'AI Advisor',
+    ti:'Trade Intelligence',trades:'Quick Trades',charts:'Charts'
+  };
+  const titleEl=document.getElementById('pageTitle');
+  if(titleEl)titleEl.textContent=titles[p]||p;
+
+  // Show/hide Add button
+  const addBtn=document.getElementById('addBtn');
+  if(addBtn)addBtn.style.display=(p==='portfolio'||p==='dashboard')?'':'none';
+
+  // Destroy any existing charts
+  Object.values(charts).forEach(function(c){try{c.destroy();}catch(e){}});charts={};
+
+  // Render page
   if(p==='dashboard')renderDashboard();
   else if(p==='portfolio')renderPortfolio();
   else if(p==='alerts')renderAlertsPage();
@@ -1040,7 +1072,26 @@ function go(p){
   else if(p==='trades')renderQuickTrades();
   else if(p==='charts')renderChartsPage();
   closeSB();
+  closeMobMore();
 }
+
+// Restore page from URL hash or localStorage on load
+function restoreLastPage(){
+  try{
+    const hash=location.hash.replace('#','');
+    const ALL=['dashboard','portfolio','alerts','scanner','learn','notifications','analytics','settings','ai','ti','trades','charts'];
+    if(hash&&ALL.indexOf(hash)>=0)return hash;
+    const stored=localStorage.getItem('lastPage');
+    if(stored&&ALL.indexOf(stored)>=0)return stored;
+  }catch(e){}
+  return 'dashboard';
+}
+
+// Listen for hash changes (browser back/forward)
+window.addEventListener('hashchange',function(){
+  const hash=location.hash.replace('#','');
+  if(hash&&hash!==page)go(hash);
+});
 
 // ── ADD DROPDOWN ──
 function toggleAddDD(){document.getElementById('addDD')?.classList.toggle('show');}
@@ -1805,7 +1856,12 @@ async function addAlertFromDrawer(idx){
   const label=(document.getElementById('dpAlertL')?.value||'').trim();
   if(!price||price<=0){toast('Enter a valid price','t-error');return;}
   const p=positions[idx];const als=getAlerts(p);als.push({price,label});p.alerts=als;
-  try{positions[idx]=await savePos(p);switchDTab('alerts');toast('Alert added','t-success');}catch(e){toast('Error saving','t-error');}
+  try{
+    positions[idx]=await savePos(p);
+    switchDTab('alerts');
+    toast('Alert added','t-success');
+    await addNotif('🔔 Price alert set — '+p.ticker,'Alert at $'+price.toFixed(2)+(label?' ('+label+')':'')+'. You will be notified when price is within 1.5% of this level.','alert',p.ticker);
+  }catch(e){toast('Error saving','t-error');}
 }
 async function rmAlertDrawer(posIdx,ai){
   const als=getAlerts(positions[posIdx]).filter((_,i)=>i!==ai);positions[posIdx].alerts=als;delete positions[posIdx].alertPrice;
@@ -1826,6 +1882,26 @@ function renderAlertsPage(){
     </div><div id="alertsList"></div>`;
   const el=document.getElementById('alertsList');
   if(!active.length){el.innerHTML=`<div class="no-data"><div class="ndi">🔕</div><p>No alerts set yet.</p><button class="btn primary" onclick="go('portfolio')">Go to Portfolio</button></div>`;return;}
+  // Show trigger alerts section
+  const trigKeys=Object.keys(triggerAlerts);
+  if(trigKeys.length){
+    document.getElementById('content').insertAdjacentHTML('afterbegin',
+      '<div class="card" style="margin-bottom:1rem;border-color:rgba(251,191,36,.2);background:rgba(251,191,36,.04)">'+
+      '<div class="card-title">🎯 Active Trigger Alerts <span class="badge b-yellow" style="font-size:10px">'+trigKeys.length+'</span></div>'+
+      trigKeys.map(function(k){
+        var t=triggerAlerts[k];
+        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'+
+          '<span style="font-weight:800;min-width:55px">'+esc(t.ticker)+'</span>'+
+          '<span class="badge '+(t.direction==='buy'?'b-green':'b-red')+'" style="font-size:10px">'+(t.direction==='buy'?'BUY':'SELL')+'</span>'+
+          '<span style="font-size:12px;flex:1">Trigger at $'+t.price.toFixed(2)+'</span>'+
+          (t.lastFired?'<span style="font-size:10px;color:var(--text3)">Last fired: '+t.lastFired+'</span>':'')+
+          '<button onclick="removeTriggerAlert(this)" data-key="'+k+'" style="padding:3px 8px;border-radius:6px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red);font-size:11px;cursor:pointer">✕</button>'+
+          '</div>';
+      }).join('')+
+      '</div>'
+    );
+  }
+
   el.innerHTML=active.map(p=>{
     const idx=positions.indexOf(p),c=priceCache[p.ticker]?.current,als=getAlerts(p),anyNear=c&&als.some(a=>Math.abs(c-a.price)/a.price<0.02);
     return`<div class="pos-card${anyNear?' near-t':''}">
@@ -2592,11 +2668,13 @@ function setTriggerAlert(ticker,sigType,price,direction){
   var key=ticker+'_'+sigType;
   if(triggerAlerts[key]){
     delete triggerAlerts[key];
-    toast('Trigger alert removed for '+ticker,'');
+    toast('Trigger removed for '+ticker,'');
   } else {
     triggerAlerts[key]={ticker:ticker,price:price,direction:direction,label:sigType,lastFired:null};
     toast('🔔 Trigger set for '+ticker+' at $'+price.toFixed(2),'t-success');
     requestNotifPermission();
+    // Log to notifications so it appears in Alerts section
+    addNotif('🔔 Trigger alert set — '+ticker,(direction==='buy'?'Buy':'Sell')+' trigger at $'+price.toFixed(2)+' · Will notify when hit','alert',ticker);
   }
   loadTerminalAnalysis();
 }
@@ -2615,10 +2693,15 @@ function checkTriggerAlerts(){
     if(triggered){
       notifiedSignals[notifKey]=true;
       tr.lastFired=today;
-      var msg=tr.direction==='buy'?'🎯 BUY TRIGGER: '+tr.ticker+' at $'+c.toFixed(2)+' — your entry condition is met!':'🚨 SELL TRIGGER: '+tr.ticker+' at $'+c.toFixed(2)+' — take action now!';
-      addNotif(msg,tr.direction==='buy'?'Entry trigger hit — review and execute if conditions confirmed':'Exit trigger hit — execute your exit plan','alert',tr.ticker);
+      var tMsg=tr.direction==='buy'
+        ?'🎯 BUY TRIGGER HIT: '+tr.ticker+' at $'+c.toFixed(2)+' — entry condition met!'
+        :'🚨 SELL TRIGGER HIT: '+tr.ticker+' at $'+c.toFixed(2)+' — take action now!';
+      var tBody=tr.direction==='buy'
+        ?'Entry trigger hit at $'+tr.price.toFixed(2)+'. Review and execute if setup confirms.'
+        :'Exit trigger hit at $'+tr.price.toFixed(2)+'. Execute your exit plan now.';
+      addNotif(tMsg,tBody,'alert',tr.ticker);
       if('Notification' in window&&Notification.permission==='granted'){
-        new Notification(tr.direction==='buy'?'🎯 Buy Trigger: '+tr.ticker:'🚨 Sell Trigger: '+tr.ticker,{body:msg,tag:key});
+        new Notification(tr.direction==='buy'?'🎯 Buy Trigger: '+tr.ticker:'🚨 Sell Trigger: '+tr.ticker,{body:tMsg,tag:key});
       }
     }
   });
@@ -2628,9 +2711,14 @@ setInterval(checkTriggerAlerts,60000);
 function addToWatchlistFromTerminal(ticker){
   var existing=watchlist.find(function(w){return w.ticker===ticker;});
   if(existing){toast(ticker+' already on watchlist','');return;}
-  var price=priceCache[ticker]?.current||0;
+  var price=priceCache[ticker]&&priceCache[ticker].current?priceCache[ticker].current:0;
   var wItem={ticker:ticker,company:ticker,targetBuy:price?price.toFixed(2):'',created_at:new Date().toISOString()};
-  saveWatch(wItem).then(function(saved){watchlist.push(saved);toast('✓ '+ticker+' added to watchlist','t-success');loadTerminalAnalysis();}).catch(function(){toast('Error adding to watchlist','t-error');});
+  saveWatch(wItem).then(function(saved){
+    watchlist.push(saved);
+    toast('✓ '+ticker+' added to watchlist','t-success');
+    addNotif('👀 Added to watchlist — '+ticker,price?'Added at $'+price.toFixed(2)+'. Set a target buy price to get entry alerts.':'Added to watchlist.','alert',ticker);
+    loadTerminalAnalysis();
+  }).catch(function(){toast('Error adding to watchlist','t-error');});
 }
 
 function switchTerminalTF(tf){terminalTF=tf;loadTerminalAnalysis();}
@@ -3704,71 +3792,83 @@ function updateSellCalc(){renderSellModalBody();}
 
 async function confirmSell(){
   const s=sellModalState;
-  if(s.posIdx<0)return;
+  if(s.posIdx<0||s.posIdx>=positions.length){toast('Position not found','t-error');return;}
   const pos=positions[s.posIdx];
   if(!pos){toast('Position not found','t-error');return;}
 
-  const sharesToSell=s.shares*(s.pct/100);
-  const sellPrice=parseFloat(document.getElementById('sellPriceIn')?.value)||s.price||priceCache[s.ticker]?.current||s.avgBuy||0;
+  // Get values from modal
+  const priceInput=document.getElementById('sellPriceIn');
+  const reasonInput=document.getElementById('sellReasonIn');
+  const sellPrice=parseFloat(priceInput?.value)||s.price||0;
+  const reason=(reasonInput?.value||'').trim();
+  if(!sellPrice||sellPrice<=0){toast('Enter a valid sell price','t-error');return;}
+
+  const sharesToSell=parseFloat((s.shares*(s.pct/100)).toFixed(6));
   const proceeds=sharesToSell*sellPrice;
   const cost=sharesToSell*(s.avgBuy||0);
   const pl=proceeds-cost;
   const plPct=cost?pl/cost*100:0;
-  const reason=(document.getElementById('sellReasonIn')?.value||'').trim();
+  const plStr=(pl>=0?'+':'')+'$'+Math.abs(pl).toFixed(2)+' ('+(plPct>=0?'+':'')+plPct.toFixed(1)+'%)';
 
-  // Disable confirm button to prevent double-tap
-  const confirmBtn=document.querySelector('.sell-modal button[onclick="confirmSell()"]');
-  if(confirmBtn){confirmBtn.disabled=true;confirmBtn.textContent='Processing...';}
+  // Disable button
+  const allBtns=document.querySelectorAll('.sell-modal button');
+  allBtns.forEach(function(b){b.disabled=true;});
 
   try{
-    // 1. Log to trade_history
-    try{
-      await fetch(SUPABASE_TRADE_HISTORY,{method:'POST',
-        headers:Object.assign({},H,{'Prefer':'return=minimal'}),
-        body:JSON.stringify({ticker:s.ticker,shares_sold:sharesToSell,sell_price:sellPrice,
-          avg_buy_price:s.avgBuy||0,pl_dollars:pl,pl_pct:plPct,reason:reason||null})});
-    }catch(e){console.log('Trade history log failed (non-critical):',e);}
+    // 1. Log trade history to Supabase (non-blocking)
+    fetch(SUPABASE_TRADE_HISTORY,{
+      method:'POST',
+      headers:Object.assign({},H,{'Prefer':'return=minimal'}),
+      body:JSON.stringify({
+        ticker:s.ticker,shares_sold:sharesToSell,sell_price:sellPrice,
+        avg_buy_price:s.avgBuy||0,pl_dollars:pl,pl_pct:plPct,
+        reason:reason||null,sold_at:new Date().toISOString()
+      })
+    }).catch(function(e){console.log('Trade history log failed:',e);});
 
-    // 2. Update or delete the position using proper helpers
+    // 2. Update Supabase and local state
     if(s.pct===100){
-      // Full exit — use delPos helper which handles the data column correctly
+      // Full exit
       await delPos(pos);
       positions.splice(s.posIdx,1);
-      // Clean up price cache entry to avoid stale signals
-      toast('✓ '+s.ticker+' position closed — P/L: '+(pl>=0?'+':'')+'$'+fmt(pl),'t-success');
+      // Remove from price cache signals
+      delete priceCache[s.ticker];
+      // Clear stale notifications for this ticker
+      notifiedSignals=notifiedSignals||{};
+      Object.keys(notifiedSignals).forEach(function(k){
+        if(k.startsWith(s.ticker+'_'))delete notifiedSignals[k];
+      });
+      // Clear any trigger alerts
+      Object.keys(triggerAlerts).forEach(function(k){
+        if(triggerAlerts[k].ticker===s.ticker)delete triggerAlerts[k];
+      });
+      // Log to notifications
+      await addNotif('💸 '+s.ticker+' position closed',plStr+' · Reason: '+(reason||'Manual sell'),'scanner',s.ticker);
+      toast('✓ '+s.ticker+' closed — P/L: '+plStr,'t-success');
     } else {
-      // Partial sell — update shares using savePos helper
+      // Partial sell — update shares via savePos
       const newShares=parseFloat((s.shares-sharesToSell).toFixed(6));
       const updatedPos=Object.assign({},pos,{shares:String(newShares)});
       const saved=await savePos(updatedPos);
-      positions[s.posIdx]=saved;
-      toast('✓ Sold '+s.pct+'% of '+s.ticker+' — P/L: '+(pl>=0?'+':'')+'$'+fmt(pl),'t-success');
+      if(saved)positions[s.posIdx]=saved;
+      await addNotif('💸 '+s.ticker+' partial sell ('+s.pct+'%)',plStr+' · '+sharesToSell.toFixed(4)+' shares sold at $'+sellPrice.toFixed(2),'scanner',s.ticker);
+      toast('✓ Sold '+s.pct+'% of '+s.ticker+' — P/L: '+plStr,'t-success');
     }
 
-    // 3. Close modal
+    // 3. Close modal and drawer
     closeSellModal();
     closeDrawer();
 
-    // 4. Refresh ALL views that show position data
-    // Re-render current page
+    // 4. Refresh current page — full re-render
     go(page);
 
-    // 5. If there are scanner signals for this ticker, clear stale ones
-    if(s.pct===100){
-      // Remove from scan results if fully exited
-      tiScanResults=tiScanResults.filter(function(r){return r.ticker!==s.ticker;});
-      // Clear price cache signals
-      if(notifiedSignals){
-        Object.keys(notifiedSignals).forEach(function(k){
-          if(k.startsWith(s.ticker+'_'))delete notifiedSignals[k];
-        });
-      }
-    }
+    // 5. Refresh prices in background
+    if(apiKey&&positions.length)setTimeout(refreshPrices,500);
 
   }catch(e){
     console.error('confirmSell error:',e);
-    toast('Error processing sell: '+e.message,'t-error');
-    if(confirmBtn){confirmBtn.disabled=false;confirmBtn.textContent=s.pct===100?'Exit Full Position':'Sell '+s.pct+'% of Position';}
+    toast('Sell failed: '+e.message,'t-error');
+    allBtns.forEach(function(b){b.disabled=false;});
   }
 }
 
@@ -4961,6 +5061,7 @@ function openModalWithIdx(idx,type,prefillTicker){
 
 function renderAlertList(){const el=document.getElementById('alertList');if(!el)return;if(!_alerts.length){el.innerHTML='<div class="no-alerts">No alerts — add one below.</div>';return;}el.innerHTML=_alerts.map((a,i)=>`<div class="alert-row-item"><span class="ap">$${a.price.toFixed(2)}</span><span class="al">${a.label?esc(a.label):'<span style="color:var(--text3)">no label</span>'}</span><button class="btn xs danger" onclick="_alerts.splice(${i},1);renderAlertList()">✕</button></div>`).join('');}
 function addAlertModal(){const price=parseFloat(document.getElementById('newP')?.value);const label=(document.getElementById('newL')?.value||'').trim();if(!price||price<=0){toast('Enter a valid price','t-error');return;}_alerts.push({price,label});document.getElementById('newP').value='';document.getElementById('newL').value='';renderAlertList();document.getElementById('newP').focus();}
+function removeTriggerAlert(btn){var k=btn.getAttribute('data-key');if(k&&triggerAlerts[k])delete triggerAlerts[k];renderAlertsPage();}
 function closeModal(){document.getElementById('modalWrap').innerHTML='';document.getElementById('ticker-dd-drop')?.remove();}
 function closeBg(e){if(e.target.classList.contains('modal-bg'))closeModal();}
 function gv(id){return(document.getElementById(id)?.value||'');}
