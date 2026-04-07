@@ -3809,17 +3809,16 @@ async function fetchTIStockData(ticker){
   if(!apiKey)return null;
   try{
     const to=Math.floor(Date.now()/1000);
-    const from=Math.floor((Date.now()-60*86400000)/1000); // 60 days for 20DMA
-    const [quoteR,candleR,earningsR]=await Promise.all([
-      fetch('https://finnhub.io/api/v1/quote?symbol='+encodeURIComponent(ticker)+'&token='+apiKey),
-      fetch('https://finnhub.io/api/v1/stock/candle?symbol='+encodeURIComponent(ticker)+'&resolution=D&from='+from+'&to='+to+'&token='+apiKey),
-      fetch('https://finnhub.io/api/v1/calendar/earnings?symbol='+encodeURIComponent(ticker)+'&token='+apiKey)
-    ]);
+    const from=Math.floor((Date.now()-60*86400000)/1000);
+    // Sequential calls — avoids hammering rate limit
+    const quoteR=await fetch('https://finnhub.io/api/v1/quote?symbol='+encodeURIComponent(ticker)+'&token='+apiKey);
     const quote=await quoteR.json();
-    const candles=await candleR.json();
-    const earningsData=await earningsR.json();
-
     if(!quote||!quote.c||quote.c<=0)return null;
+    await new Promise(r=>setTimeout(r,150)); // small gap between calls
+    const candleR=await fetch('https://finnhub.io/api/v1/stock/candle?symbol='+encodeURIComponent(ticker)+'&resolution=D&from='+from+'&to='+to+'&token='+apiKey);
+    const candles=await candleR.json();
+    // Skip earnings call to save rate limit — use manual news log for earnings risk
+    const earningsData={earningsCalendar:[]};
 
     const closes=candles.s==='ok'?candles.c:[];
     const highs=candles.s==='ok'?candles.h:[];
@@ -3885,8 +3884,9 @@ async function fetchRegimeData(){
   if(!apiKey)return;
   const symbols=['SPY','QQQ','IWM','BINANCE:BTCUSDT'];
   const results={};
-  await Promise.all(symbols.map(async sym=>{
-    try{
+  for(const sym of symbols){
+   try{
+      await new Promise(r=>setTimeout(r,200));
       const r=await fetch('https://finnhub.io/api/v1/quote?symbol='+encodeURIComponent(sym)+'&token='+apiKey);
       const d=await r.json();
       if(d&&d.c>0){
@@ -3913,7 +3913,7 @@ async function fetchRegimeData(){
         results[sym]={price:d.c,dc:d.dp,ma10,ma20,ret5d,ret20d,trendScore:ts,flag};
       }
     }catch(e){}
-  }));
+  }
   // VIX
   try{
     const vr=await fetch('https://finnhub.io/api/v1/quote?symbol=^VIX&token='+apiKey);
@@ -4077,42 +4077,48 @@ function scoreStock(data,universe,newsEntry){
 
 // ── FULL SCAN ──
 async function runTIScan(){
-  const universe=getTIUniverse();
-  const results=[];
-  // Fetch regime first
-  await fetchRegimeData();
-  // Process each stock sequentially to stay within rate limits
-  for(let ui=0;ui<universe.length;ui++){
-    const u=universe[ui];
-    // Update progress
-    const prog=document.getElementById('tiScanProgress');
-    if(prog)prog.textContent='Scanning '+u.ticker+' ('+( ui+1)+'/'+universe.length+')...';
-    const data=await fetchTIStockData(u.ticker);
-    if(!data){
-      console.log('TI: No data for',u.ticker);
-      results.push({ticker:u.ticker,error:true,universe:u});
-      await new Promise(r=>setTimeout(r,200));
+  var CRYPTO_SKIP=['BTC','ETH','SOL','DOGE','XRP','BNB','ADA','MATIC','DOT','LTC','SHIB','AVAX'];
+  var universe=getTIUniverse();
+  var results=[];
+  try{await fetchRegimeData();}catch(e){console.log('Regime err:',e);}
+  for(var ui=0;ui<universe.length;ui++){
+    var u=universe[ui];
+    var prog=document.getElementById('tiScanProgress');
+    if(prog)prog.textContent='Scanning '+u.ticker+' ('+(ui+1)+'/'+universe.length+')...';
+    // Skip pure crypto tickers — Finnhub stock endpoint won't return valid data
+    if(CRYPTO_SKIP.indexOf(u.ticker)>=0){
+      console.log('TI: skipping crypto',u.ticker);
+      await new Promise(function(res){setTimeout(res,50);});
       continue;
     }
-    // Check SEC only for BTC-linked (saves API calls)
-    let dilution=false;
-    if(u.linkage==='BTC'){
-      try{dilution=await checkSECFiling(u.ticker);}catch(e){}
+    var data=null;
+    try{data=await fetchTIStockData(u.ticker);}catch(e){console.log('TI fetch err',u.ticker,e);}
+    if(!data){
+      console.log('TI: no data for',u.ticker);
+      await new Promise(function(res){setTimeout(res,200);});
+      continue;
     }
-    const news=tiNewsLog.find(n=>n.ticker===u.ticker);
-    if(news&&dilution)news.dilutionFlag=true;
-    const score=scoreStock(data,u,news);
-    score.universe=u;
-    console.log('TI scored:',u.ticker,'→',score.action,'('+score.composite+')');
-    results.push(score);
-    await new Promise(r=>setTimeout(r,300));
+    var dilution=false;
+    if(u.linkage==='BTC'){try{dilution=await checkSECFiling(u.ticker);}catch(e){}}
+    var newsEntry=null;
+    for(var ni=0;ni<tiNewsLog.length;ni++){if(tiNewsLog[ni].ticker===u.ticker){newsEntry=tiNewsLog[ni];break;}}
+    if(newsEntry&&dilution)newsEntry.dilutionFlag=true;
+    var score=null;
+    try{score=scoreStock(data,u,newsEntry);score.universe=u;}
+    catch(e){console.error('Score err',u.ticker,e);score=null;}
+    if(score){
+      console.log('TI:',u.ticker,'→',score.action,'score:'+score.composite);
+      results.push(score);
+    }
+    await new Promise(function(res){setTimeout(res,400);});
   }
-  tiScanResults=results.filter(r=>!r.error&&r.composite!==undefined).sort((a,b)=>{
-    const ao=a.action==='BUY'?0:a.action==='WAIT'?1:2;
-    const bo=b.action==='BUY'?0:b.action==='WAIT'?1:2;
+  tiScanResults=results.sort(function(a,b){
+    var ao=a.action==='BUY'?0:a.action==='WAIT'?1:2;
+    var bo=b.action==='BUY'?0:b.action==='WAIT'?1:2;
     if(ao!==bo)return ao-bo;
     return b.composite-a.composite;
   });
+  console.log('TI scan done:',tiScanResults.length,'scored stocks');
   return tiScanResults;
 }
 
@@ -4278,28 +4284,36 @@ function expandTICard(ticker){
 }
 
 async function startTIScan(){
-  const btn=document.getElementById('tiScanBtn');
+  var btn=document.getElementById('tiScanBtn');
   if(btn){btn.textContent='Scanning...';btn.disabled=true;}
-  const el=document.getElementById('tiScanList');
-  const universe=getTIUniverse();
+  var tiEl=document.getElementById('tiContent');
   if(!apiKey){
-    if(el)el.innerHTML='<div class="ti-section" style="text-align:center;padding:2rem;color:var(--yellow)">⚠️ No Finnhub API key set. Go to Settings and add your key first.</div>';
+    if(tiEl)tiEl.innerHTML='<div class="ti-section" style="text-align:center;padding:2rem"><div style="font-size:28px;margin-bottom:.75rem">⚠️</div><div style="color:var(--yellow);font-weight:600">No Finnhub API key</div><div class="muted" style="font-size:13px;margin-top:.5rem">Go to Settings and save your Finnhub API key first, then scan.</div></div>';
     if(btn){btn.textContent='⚡ Run Scan';btn.disabled=false;}
     return;
   }
-  if(el)el.innerHTML='<div class="ti-section" style="text-align:center;padding:2rem"><div style="font-size:28px;margin-bottom:.5rem">⏳</div><div style="font-size:13px;color:var(--text3)">Fetching live data for '+universe.length+' stocks...<br>This takes ~'+Math.round(universe.length*0.5+5)+' seconds.</div><div id="tiScanProgress" style="margin-top:1rem;font-size:12px;color:var(--accent2)"></div></div>';
+  var universe=getTIUniverse();
+  var scannable=universe.filter(function(u){return ['BTC','ETH','SOL','DOGE','XRP','BNB','ADA'].indexOf(u.ticker)<0;}).length;
+  if(tiEl){
+    tiEl.innerHTML='<div class="ti-section" style="text-align:center;padding:2.5rem">'+
+      '<div style="font-size:36px;margin-bottom:1rem">⏳</div>'+
+      '<div style="font-weight:600;font-size:15px;margin-bottom:.5rem">Scanning '+scannable+' stocks...</div>'+
+      '<div style="font-size:13px;color:var(--text3);margin-bottom:1rem">Fetching live prices · Calculating MAs · Scoring 7 factors</div>'+
+      '<div id="tiScanProgress" style="font-size:13px;color:var(--accent2);font-weight:600;min-height:24px;padding:4px 0"></div>'+
+      '<div style="font-size:11px;color:var(--text3);margin-top:.5rem">~'+Math.round(scannable*0.4+3)+' seconds</div>'+
+      '</div>';
+  }
   try{
     await runTIScan();
   }catch(e){
-    console.error('TI Scan error:',e);
-    if(el)el.innerHTML='<div class="ti-section" style="color:var(--red);padding:1rem">Scan error: '+e.message+'<br><br>Check console for details.</div>';
+    console.error('TI scan error:',e);
+    var tiElErr=document.getElementById('tiContent');
+    if(tiElErr)tiElErr.innerHTML='<div class="ti-section" style="text-align:center;padding:2rem"><div style="font-size:28px;margin-bottom:.5rem">❌</div><div style="color:var(--red);font-weight:600">Scan error</div><div class="muted" style="font-size:12px;margin-top:.5rem">'+e.message+'</div></div>';
     if(btn){btn.textContent='⚡ Run Scan';btn.disabled=false;}
     return;
   }
-  // Re-render just the tiContent — no full page rebuild (avoids twitch)
-  const tiEl=document.getElementById('tiContent');
-  if(tiEl)renderTIScanner(tiEl);
-  else renderTradeIntelligence();
+  var tiElFinal=document.getElementById('tiContent');
+  if(tiElFinal)renderTIScanner(tiElFinal);
   if(btn){btn.textContent='⚡ Run Scan';btn.disabled=false;}
 }
 
