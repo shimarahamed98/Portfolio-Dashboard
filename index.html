@@ -967,6 +967,28 @@ async function bootApp(){
   setInterval(checkAlerts,60000);
   setInterval(checkSellAlerts,60000);
   setInterval(autoSync,30000);
+  // TI auto-scan every 30 mins during market hours
+  setInterval(function(){
+    if(!apiKey)return;
+    var now=new Date();
+    var day=now.getDay(); // 0=Sun, 6=Sat
+    if(day===0||day===6)return; // skip weekends
+    // Convert to ET (UTC-4 during daylight saving, UTC-5 otherwise)
+    var etOffset=-4; // approximate for EST/EDT
+    var etHour=(now.getUTCHours()+etOffset+24)%24;
+    var etMin=now.getUTCMinutes();
+    var etTime=etHour*60+etMin;
+    var marketOpen=9*60+30; // 9:30am
+    var marketClose=16*60; // 4:00pm
+    if(etTime<marketOpen||etTime>marketClose)return;
+    console.log('TI: Auto-scan triggered at ET',etHour+':'+String(etMin).padStart(2,'0'));
+    // Only scan if user is NOT currently on the TI page (avoid interrupting manual use)
+    if(page!=='ti'){
+      runTIScan().then(function(){
+        addNotif('🧠 TI Auto-scan complete',tiScanResults.length+' stocks scored. '+tiScanResults.filter(function(r){return r.action==='BUY';}).length+' BUY signals.','scanner','TI');
+      }).catch(function(e){console.log('TI auto-scan error:',e);});
+    }
+  },30*60*1000); // every 30 minutes
 }
 function setLM(m){const el=document.getElementById('loadMsg');if(el)el.textContent=m;}
 function hideLoading(){document.getElementById('loadScreen').style.display='none';document.getElementById('appShell').style.visibility='visible';}
@@ -3781,11 +3803,15 @@ let tiSettings={
   buyThreshold:75,watchThreshold:55
 };
 let tiUniverse=[
-  {ticker:'ASST',company:'Strive Asset Mgmt',sector:'Finance',theme:'BTC Treasury',linkage:'BTC',notes:'Reacts to BTC + treasury updates'},
-  {ticker:'BBAI',company:'BigBear.ai',sector:'AI/Defense',theme:'AI Momentum',linkage:'',notes:'Headline-sensitive'},
+  {ticker:'STRIVE',company:'Strive Asset Mgmt',sector:'Finance',theme:'BTC Treasury',linkage:'BTC',notes:'Primary watch — reacts to BTC + treasury updates. Moves 1.5x-3x BTC sentiment swings.'},
+  {ticker:'ASST',company:'Strive (old ticker)',sector:'Finance',theme:'BTC Treasury',linkage:'BTC',notes:'BTC proxy — check if still active'},
+  {ticker:'MSTR',company:'MicroStrategy',sector:'Finance',theme:'BTC Treasury',linkage:'BTC',notes:'Largest BTC corporate holder — high BTC correlation'},
+  {ticker:'BBAI',company:'BigBear.ai',sector:'AI/Defense',theme:'AI Momentum',linkage:'',notes:'Headline-sensitive AI play'},
   {ticker:'SOUN',company:'SoundHound AI',sector:'AI',theme:'AI Momentum',linkage:'',notes:'High beta AI play'},
-  {ticker:'HOOD',company:'Robinhood',sector:'Finance',theme:'Retail Trading',linkage:'',notes:'Reacts to market volumes'},
-  {ticker:'COIN',company:'Coinbase',sector:'Crypto',theme:'BTC Beta',linkage:'BTC',notes:'Reacts to BTC + crypto flows'}
+  {ticker:'HOOD',company:'Robinhood',sector:'Finance',theme:'Retail Trading',linkage:'',notes:'Reacts to market volumes and crypto sentiment'},
+  {ticker:'COIN',company:'Coinbase',sector:'Crypto',theme:'BTC Beta',linkage:'BTC',notes:'Reacts to BTC + crypto flows'},
+  {ticker:'PLTR',company:'Palantir',sector:'AI/Defense',theme:'AI Momentum',linkage:'',notes:'AI/Gov contracts — momentum driven'},
+  {ticker:'IONQ',company:'IonQ',sector:'Quantum',theme:'Quantum Computing',linkage:'',notes:'High volatility quantum play'}
 ];
 let tiNewsLog=[];
 let tiTradeLog=[];
@@ -3793,6 +3819,7 @@ let tiRegimeData={};
 let tiScanResults=[];
 let tiScanTimer=null;
 let tiExpandedTicker=null;
+let tiSortKey='confidence'; // confidence|action|ticker|trend|rr
 
 // Merge universe with existing positions/watchlist
 function getTIUniverse(){
@@ -4161,6 +4188,23 @@ function renderTIScanner(el){
   var masterIcon=master==='GREEN'?'🟢':master==='YELLOW'?'🟡':'🔴';
   var btcIcon=btcR==='GREEN'?'₿🟢':btcR==='YELLOW'?'₿🟡':'₿🔴';
 
+  // Sort results
+  var sorted=tiScanResults.slice();
+  if(tiSortKey==='confidence'){
+    sorted.sort(function(a,b){
+      var ao=a.action==='BUY'?0:a.action==='WAIT'?1:2;
+      var bo=b.action==='BUY'?0:b.action==='WAIT'?1:2;
+      if(ao!==bo)return ao-bo;
+      return (b.composite||0)-(a.composite||0);
+    });
+  } else if(tiSortKey==='ticker'){
+    sorted.sort(function(a,b){return a.ticker.localeCompare(b.ticker);});
+  } else if(tiSortKey==='rr'){
+    sorted.sort(function(a,b){return (b.levels&&b.levels.rr1?b.levels.rr1:0)-(a.levels&&a.levels.rr1?a.levels.rr1:0);});
+  } else if(tiSortKey==='score'){
+    sorted.sort(function(a,b){return (b.composite||0)-(a.composite||0);});
+  }
+
   var html='';
   // Header row
   html+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:1rem;flex-wrap:wrap">';
@@ -4168,7 +4212,16 @@ function renderTIScanner(el){
   html+='<span class="regime-'+masterColor+'">'+masterIcon+' Market: '+master+'</span>';
   html+='<span class="regime-'+btcColor+'">'+btcIcon+' BTC: '+btcR+'</span>';
   html+='</div>';
-  html+='<button class="btn primary sm" id="tiScanBtn" onclick="startTIScan()" style="margin-left:auto">⚡ Run Scan</button>';
+  html+='<div style="display:flex;align-items:center;gap:6px;margin-left:auto">';
+  html+='<span style="font-size:11px;color:var(--text3)">Sort:</span>';
+  html+='<select onchange="applyTISort(this.value)" style="padding:5px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px;outline:none;cursor:pointer">';
+  html+='<option value="confidence"'+(tiSortKey==='confidence'?' selected':'')+'>Best first (Action + Score)</option>';
+  html+='<option value="score"'+(tiSortKey==='score'?' selected':'')+'>Score descending</option>';
+  html+='<option value="rr"'+(tiSortKey==='rr'?' selected':'')+'>R/R ratio</option>';
+  html+='<option value="ticker"'+(tiSortKey==='ticker'?' selected':'')+'>A–Z</option>';
+  html+='</select>';
+  html+='<button class="btn primary sm" id="tiScanBtn" onclick="startTIScan()">⚡ Scan</button>';
+  html+='</div>';
   html+='</div>';
 
   // Empty state
@@ -4184,8 +4237,8 @@ function renderTIScanner(el){
   // Results list
   html+='<div id="tiScanList">';
   if(hasResults){
-    for(var i=0;i<tiScanResults.length;i++){
-      html+=renderTIStockCard(tiScanResults[i],i);
+    for(var i=0;i<sorted.length;i++){
+      html+=renderTIStockCard(sorted[i],i);
     }
     html+='</div>';
     html+='<div style="font-size:11px;color:var(--text3);text-align:center;margin-top:1rem">Sorted: BUY first → Composite score · Tap any card to expand full breakdown</div>';
@@ -4272,6 +4325,7 @@ function renderTICardExpanded(r){
   </div>`;
 }
 
+function applyTISort(key){tiSortKey=key;var el=document.getElementById('tiContent');if(el)renderTIScanner(el);}
 function expandTICard(ticker){
   if(!ticker)return;
   tiExpandedTicker=tiExpandedTicker===ticker?null:ticker;
