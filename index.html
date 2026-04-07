@@ -406,6 +406,10 @@ tr.leg-row.hidden{display:none}
   .tv-hdr button{min-width:44px;min-height:44px}
 }
 
+/* HIDE NUMBER SPINNERS — free typing everywhere */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=number]{-moz-appearance:textfield}
 /* AUTH */
 .auth-screen{position:fixed;inset:0;background:var(--bg);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1.5rem}
 .auth-card{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:2.5rem 2rem;width:100%;max-width:380px;text-align:center}
@@ -1823,7 +1827,7 @@ function renderDrawerTab(){
       </div>
       <div style="margin-top:.75rem">
         <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:8px">Add alert</div>
-        <div class="alert-add"><input class="price-in" type="number" step="0.01" id="dpAlertP" placeholder="Price..."/><input class="label-in" type="text" id="dpAlertL" placeholder="Label (optional)" maxlength="30"/><button class="btn sm" onclick="addAlertFromDrawer(${currentDrawerPos})">+ Add</button></div>
+        <div class="alert-add"><input class="price-in" type="text" inputmode="decimal" id="dpAlertP" placeholder="Price..."/><input class="label-in" type="text" id="dpAlertL" placeholder="Label (optional)" maxlength="30"/><button class="btn sm" onclick="addAlertFromDrawer(${currentDrawerPos})">+ Add</button></div>
       </div>`;
   }else if(currentDrawerTab==='technical'){
     const sup=parseFloat(p.support)||0,res=parseFloat(p.resistance)||0;
@@ -3677,7 +3681,7 @@ function renderQTCard(s,i){
         <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">R/R</div>
         <div style="font-weight:800;font-size:13px;color:var(--accent2)">${s.rr?s.rr.toFixed(1)+'x':'—'}</div>
       </div>`:''}
-      ${s.isSell?`<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px;text-align:center;cursor:pointer" onclick="event.stopPropagation();openSellModal('${esc(s.ticker)}')">
+      ${s.isSell?`<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px;text-align:center;cursor:pointer" onclick="event.stopPropagation();openSellFromQT('${esc(s.ticker)}')">
         <div style="font-size:10px;color:var(--red);font-weight:700;text-transform:uppercase;margin-bottom:2px">Action</div>
         <div style="font-weight:800;font-size:12px;color:var(--red)">Sell Now →</div>
       </div>`:''}
@@ -3686,6 +3690,14 @@ function renderQTCard(s,i){
 }
 
 let qtSetups=[];
+
+// Dedicated sell handler for Quick Trades — finds correct position index
+function openSellFromQT(ticker){
+  var idx=positions.findIndex(function(p){return p.ticker===ticker;});
+  if(idx<0){toast('Position not found for '+ticker,'t-error');return;}
+  openSellModal(ticker,idx);
+}
+
 function openQTSetup(idx){
   // Store setups for reference
   const allStocks=[...positions.map(p=>({...p,_src:'owned'})),...watchlist.map(w=>({...w,_src:'watch'}))];
@@ -3709,7 +3721,7 @@ function openQTSetup(idx){
   setups.sort((a,b)=>b.confidence-a.confidence);
   const s=setups[idx];
   if(!s)return;
-  if(s.isSell){openSellModal(s.ticker);return;}
+  if(s.isSell){openSellFromQT(s.ticker);return;}
   openTVModal(s.ticker,s);
 }
 
@@ -3767,7 +3779,7 @@ function renderSellModalBody(){
     </div>
     <div style="margin-bottom:1rem">
       <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem">Sell price</div>
-      <input type="number" step="0.01" id="sellPriceIn" value="${(s.price||0).toFixed(2)}" oninput="sellModalState.price=parseFloat(this.value)||0;updateSellCalc()" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:16px;outline:none;box-sizing:border-box;font-family:inherit"/>
+      <input type="text" inputmode="decimal" id="sellPriceIn" value="${(s.price||0).toFixed(2)}" oninput="sellModalState.price=parseFloat(this.value)||0;updateSellCalc()" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:16px;outline:none;box-sizing:border-box;font-family:inherit"/>
     </div>
     <div style="background:var(--bg3);border-radius:10px;padding:1rem;margin-bottom:1rem" id="sellCalc">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
@@ -3860,10 +3872,11 @@ async function confirmSell(){
     closeDrawer();
 
     // 4. Refresh current page — full re-render
-    go(page);
+    // Small delay ensures local state is settled before re-render
+    setTimeout(function(){go(page);},50);
 
     // 5. Refresh prices in background
-    if(apiKey&&positions.length)setTimeout(refreshPrices,500);
+    if(apiKey&&positions.length)setTimeout(refreshPrices,600);
 
   }catch(e){
     console.error('confirmSell error:',e);
@@ -4669,12 +4682,12 @@ function openTITradeEntry(ticker='',entry=0,stop=0,t1=0,t2=0,score=0){
         <div style="display:grid;gap:10px">
           <div><div class="ti-label">Ticker</div><input id="tlTicker" class="ti-input" value="${esc(ticker)}" placeholder="TICKER"/></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <div><div class="ti-label">Entry Price</div><input id="tlEntry" type="number" step="0.01" class="ti-input" value="${entry||''}"/></div>
-            <div><div class="ti-label">Shares</div><input id="tlShares" type="number" class="ti-input" value="${entry?Math.floor(tiSettings.capital/entry):''}"/></div>
-            <div><div class="ti-label">Stop Loss</div><input id="tlStop" type="number" step="0.01" class="ti-input" value="${stop||''}"/></div>
-            <div><div class="ti-label">Target 1</div><input id="tlT1" type="number" step="0.01" class="ti-input" value="${t1||''}"/></div>
-            <div><div class="ti-label">Target 2</div><input id="tlT2" type="number" step="0.01" class="ti-input" value="${t2||''}"/></div>
-            <div><div class="ti-label">Scanner Score</div><input id="tlScore" type="number" class="ti-input" value="${score||''}"/></div>
+            <div><div class="ti-label">Entry Price</div><input id="tlEntry" type="text" inputmode="decimal" class="ti-input" value="${entry||''}"/></div>
+            <div><div class="ti-label">Shares</div><input id="tlShares" type="text" inputmode="numeric" class="ti-input" value="${entry?Math.floor(tiSettings.capital/entry):''}"/></div>
+            <div><div class="ti-label">Stop Loss</div><input id="tlStop" type="text" inputmode="decimal" class="ti-input" value="${stop||''}"/></div>
+            <div><div class="ti-label">Target 1</div><input id="tlT1" type="text" inputmode="decimal" class="ti-input" value="${t1||''}"/></div>
+            <div><div class="ti-label">Target 2</div><input id="tlT2" type="text" inputmode="decimal" class="ti-input" value="${t2||''}"/></div>
+            <div><div class="ti-label">Scanner Score</div><input id="tlScore" type="text" inputmode="numeric" class="ti-input" value="${score||''}"/></div>
           </div>
           <div><div class="ti-label">Date Entered</div><input id="tlDate" type="date" class="ti-input" value="${new Date().toISOString().slice(0,10)}"/></div>
           <div class="modal-actions"><button class="btn primary" onclick="saveTITrade()">Save Trade</button></div>
@@ -4709,11 +4722,11 @@ function renderTISettings(el){
   el.innerHTML=`
     <div class="ti-section">
       <div class="ti-label">Risk & Execution</div>
-      ${[['Capital Per Trade','capital','number',s.capital],['Max Risk % of Position','maxRiskPct','number',s.maxRiskPct],['Target 1 %','target1Pct','number',s.target1Pct],['Target 2 %','target2Pct','number',s.target2Pct],['Hard Stop % Default','hardStopPct','number',s.hardStopPct],['Max Hold Days','maxHoldDays','number',s.maxHoldDays],['No Chase % Above Buy Zone','noChaseAbovePct','number',s.noChaseAbovePct],['Min Risk/Reward','minRR','number',s.minRR]].map(([label,key,type,val])=>`<div class="ti-row"><span style="font-size:12px;color:var(--text2)">${label}</span><input type="${type}" value="${val}" step="0.001" onchange="tiSettings['${key}']=parseFloat(this.value)||this.value" style="width:90px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:12px;text-align:right;outline:none"/></div>`).join('')}
+      ${[['Capital Per Trade','capital','number',s.capital],['Max Risk % of Position','maxRiskPct','number',s.maxRiskPct],['Target 1 %','target1Pct','number',s.target1Pct],['Target 2 %','target2Pct','number',s.target2Pct],['Hard Stop % Default','hardStopPct','number',s.hardStopPct],['Max Hold Days','maxHoldDays','number',s.maxHoldDays],['No Chase % Above Buy Zone','noChaseAbovePct','number',s.noChaseAbovePct],['Min Risk/Reward','minRR','number',s.minRR]].map(([label,key,type,val])=>`<div class="ti-row"><span style="font-size:12px;color:var(--text2)">${label}</span><input type="${type}" type="text" inputmode="decimal" value="${val}" onchange="tiSettings['${key}']=parseFloat(this.value)||this.value" style="width:90px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:12px;text-align:right;outline:none"/></div>`).join('')}
     </div>
     <div class="ti-section">
       <div class="ti-label">Action Thresholds</div>
-      ${[['BUY Threshold (≥)','buyThreshold',s.buyThreshold],['WAIT Threshold (≥)','watchThreshold',s.watchThreshold]].map(([label,key,val])=>`<div class="ti-row"><span style="font-size:12px;color:var(--text2)">${label}</span><input type="number" value="${val}" onchange="tiSettings['${key}']=parseInt(this.value)" style="width:70px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:12px;text-align:right;outline:none"/></div>`).join('')}
+      ${[['BUY Threshold (≥)','buyThreshold',s.buyThreshold],['WAIT Threshold (≥)','watchThreshold',s.watchThreshold]].map(([label,key,val])=>`<div class="ti-row"><span style="font-size:12px;color:var(--text2)">${label}</span><input type="text" inputmode="numeric" value="${val}" onchange="tiSettings['${key}']=parseInt(this.value)" style="width:70px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:12px;text-align:right;outline:none"/></div>`).join('')}
     </div>
     <div class="ti-section">
       <div class="ti-label">Hard Rules (read-only reminder)</div>
@@ -4994,7 +5007,7 @@ function openModalWithIdx(idx,type,prefillTicker){
         ${isWatch?`
         <div class="form-sec">Watchlist details</div>
         <div class="form-grid">
-          <div class="fg"><label>Target buy price ($) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">The price you want to buy this stock at</span></span></label><input id="wt" type="number" step="0.01" value="${p.targetBuy||''}"/></div>
+          <div class="fg"><label>Target buy price ($) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">The price you want to buy this stock at</span></span></label><input id="wt" type="text" inputmode="decimal" value="${p.targetBuy||''}"/></div>
           <div class="fg"><label>Reason for watching</label><input id="wr" value="${esc(p.reason||'')}" placeholder="Why are you watching this?"/></div>
         </div>
         <div class="form-grid">
@@ -5004,15 +5017,15 @@ function openModalWithIdx(idx,type,prefillTicker){
         `:`
         <div class="form-sec">Capital</div>
         <div class="form-grid g3">
-          <div class="fg"><label>Shares <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">${tips.shares}</span></span></label><input id="f3" type="number" value="${p.shares||''}"/></div>
-          <div class="fg"><label>Avg buy price ($) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">${tips.avgBuy}</span></span></label><input id="f4" type="number" step="0.01" value="${p.avgBuy||''}"/></div>
-          <div class="fg"><label>Current price ($)</label><input id="f5" type="number" step="0.01" value="${p.currentPrice||''}" placeholder="Auto-filled"/></div>
+          <div class="fg"><label>Shares <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">${tips.shares}</span></span></label><input id="f3" type="text" inputmode="numeric" value="${p.shares||''}"/></div>
+          <div class="fg"><label>Avg buy price ($) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">${tips.avgBuy}</span></span></label><input id="f4" type="text" inputmode="decimal" value="${p.avgBuy||''}"/></div>
+          <div class="fg"><label>Current price ($)</label><input id="f5" type="text" inputmode="decimal" value="${p.currentPrice||''}" placeholder="Auto-filled"/></div>
         </div>
         <div class="form-sec">Trade plan</div>
         <div class="form-grid g3">
-          <div class="fg"><label>Entry target ($) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">${tips.entryTarget}</span></span></label><input id="f6" type="number" step="0.01" value="${p.entryTarget||''}"/></div>
+          <div class="fg"><label>Entry target ($) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">${tips.entryTarget}</span></span></label><input id="f6" type="text" inputmode="decimal" value="${p.entryTarget||''}"/></div>
           <div class="fg"><label>Take profit <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">${tips.takeProfit}</span></span></label><input id="f7" value="${esc(p.takeProfit||'')}" placeholder="160 / 185 / 200"/></div>
-          <div class="fg"><label>Stop loss ($) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">${tips.stopLoss}</span></span></label><input id="f8" type="number" step="0.01" value="${p.stopLoss||''}"/></div>
+          <div class="fg"><label>Stop loss ($) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">${tips.stopLoss}</span></span></label><input id="f8" type="text" inputmode="decimal" value="${p.stopLoss||''}"/></div>
         </div>
         <div class="form-sec">Strategy</div>
         <div class="form-grid g3">
@@ -5022,8 +5035,8 @@ function openModalWithIdx(idx,type,prefillTicker){
         </div>
         <div class="form-sec">Risk</div>
         <div class="form-grid g3">
-          <div class="fg"><label>Position size (%) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">${tips.positionSize}</span></span></label><input id="f12" type="number" step="0.1" value="${p.positionSize||''}"/></div>
-          <div class="fg"><label>Max loss ($) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">The maximum dollar amount you are willing to lose on this trade before you exit</span></span></label><input id="f13" type="number" step="0.01" value="${p.maxLoss||''}"/></div>
+          <div class="fg"><label>Position size (%) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">${tips.positionSize}</span></span></label><input id="f12" type="text" inputmode="decimal" value="${p.positionSize||''}"/></div>
+          <div class="fg"><label>Max loss ($) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">The maximum dollar amount you are willing to lose on this trade before you exit</span></span></label><input id="f13" type="text" inputmode="decimal" value="${p.maxLoss||''}"/></div>
           <div class="fg"><label>Risk level <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">${tips.riskLevel}</span></span></label><select id="f14"><option value="">Select</option><option ${p.riskLevel==='Low'?'selected':''}>Low</option><option ${p.riskLevel==='Medium'?'selected':''}>Medium</option><option ${p.riskLevel==='High'?'selected':''}>High</option></select></div>
         </div>
         <div class="form-sec">Execution</div>
@@ -5034,18 +5047,18 @@ function openModalWithIdx(idx,type,prefillTicker){
         <div class="form-sec">🔔 Price alerts — fires once per event, never repeats</div>
         <div class="alert-builder">
           <div class="alert-list" id="alertList"></div>
-          <div class="alert-add"><input class="price-in" type="number" step="0.01" id="newP" placeholder="Price e.g. 145.00"/><input class="label-in" type="text" id="newL" placeholder="Label e.g. Stop loss" maxlength="30"/><button class="btn sm" onclick="addAlertModal()">+ Add</button></div>
+          <div class="alert-add"><input class="price-in" type="text" inputmode="decimal" id="newP" placeholder="Price e.g. 145.00"/><input class="label-in" type="text" id="newL" placeholder="Label e.g. Stop loss" maxlength="30"/><button class="btn sm" onclick="addAlertModal()">+ Add</button></div>
         </div>
         <div class="form-sec">Technical levels</div>
         <div class="form-grid g3">
-          <div class="fg"><label>Support ($) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">Price level where buyers historically step in. A floor for the stock.</span></span></label><input id="f17" type="number" step="0.01" value="${p.support||''}"/></div>
-          <div class="fg"><label>Resistance ($) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">Price level where sellers historically appear. A ceiling for the stock.</span></span></label><input id="f18" type="number" step="0.01" value="${p.resistance||''}"/></div>
+          <div class="fg"><label>Support ($) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">Price level where buyers historically step in. A floor for the stock.</span></span></label><input id="f17" type="text" inputmode="decimal" value="${p.support||''}"/></div>
+          <div class="fg"><label>Resistance ($) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">Price level where sellers historically appear. A ceiling for the stock.</span></span></label><input id="f18" type="text" inputmode="decimal" value="${p.resistance||''}"/></div>
           <div class="fg"><label>Trend</label><select id="f19"><option value="">Select</option><option ${p.trend==='Uptrend'?'selected':''}>Uptrend</option><option ${p.trend==='Downtrend'?'selected':''}>Downtrend</option><option ${p.trend==='Sideways'?'selected':''}>Sideways</option></select></div>
         </div>
         <div class="form-sec">Catalyst tracking</div>
         <div class="form-grid g3">
           <div class="fg"><label>Catalyst</label><input id="f20" value="${esc(p.catalyst||'')}" placeholder="Earnings Q2, FDA..."/></div>
-          <div class="fg"><label>Momentum (1–10) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">${tips.momentum}</span></span></label><input id="f21" type="number" min="1" max="10" value="${p.momentum||''}"/></div>
+          <div class="fg"><label>Momentum (1–10) <span class="tip-wrap"><span class="tip-icon">?</span><span class="tip-bubble">${tips.momentum}</span></span></label><input id="f21" type="text" inputmode="numeric" value="${p.momentum||''}"/></div>
           <div class="fg"><label>Volume spike?</label><select id="f22"><option value="">Select</option><option ${p.volumeSpike==='Yes'?'selected':''}>Yes</option><option ${p.volumeSpike==='No'?'selected':''}>No</option></select></div>
         </div>`}
         <div class="modal-actions">
