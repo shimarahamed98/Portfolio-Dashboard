@@ -1825,158 +1825,151 @@ let triggerAlerts={}; // {ticker_type: {price,direction,label,lastFired}}
 let notifiedSignals={}; // {ticker_type_date: true} — prevents repeat same-day
 
 // ── SIGNAL BUILDER (owned + watchlist) ──
-function buildScannerSignals(sourceFilter){
-  const all=[
-    ...positions.map(item=>({...item,_source:'portfolio'})),
-    ...watchlist.map(item=>({...item,_source:'watchlist'}))
-  ].filter(item=>!sourceFilter||item._source===sourceFilter);
+function buildAdvice(situation,c,sl,tp,avg,conv,trend){
+  var stopNote=sl?' Your stop is at $'+sl.toFixed(2)+' — risk $'+Math.abs(c-sl).toFixed(2)+'/share.':'';
+  var tpNote=tp?' Take profit target: $'+tp.toFixed(2)+'.':'';
+  var rrNote=(sl&&tp&&avg&&avg>sl)?' R/R: '+((tp-avg)/(avg-sl)).toFixed(1)+'x.':'';
+  var convNote=conv?' Conviction: '+conv+'.':'';
+  var trendNote=trend?' Trend: '+trend+'.':'';
+  return situation+stopNote+tpNote+rrNote+convNote+trendNote;
+}
 
-  const signals=[];
-  all.forEach(item=>{
-    const t=item.ticker;
-    const c=priceCache[t]?.current||0;
-    const dc=priceCache[t]?.dayChange||0;
-    const sup=parseFloat(item.support)||0;
-    const res=parseFloat(item.resistance)||0;
-    const w52h=parseFloat(item.week52High)||0;
-    const w52l=parseFloat(item.week52Low)||0;
-    const target=parseFloat(item.targetBuy)||0;
-    const vol=item.volumeSpike==='Yes';
-    const sl=parseFloat(item.stopLoss)||0;
-    const tp=parseFloat((item.takeProfit||'').split('/')[0])||0;
-    const avg=parseFloat(item.avgBuy)||0;
-    const conv=item.conviction||'';
-    const trend=item.trend||'';
-    const mom=parseInt(item.momentum)||0;
-    const isOwned=item._source==='portfolio';
+function buildScannerSignals(sourceFilter){
+  var all=[
+    ...positions.map(function(item){return Object.assign({},item,{_source:'portfolio'});}) ,
+    ...watchlist.map(function(item){return Object.assign({},item,{_source:'watchlist'});})
+  ].filter(function(item){return !sourceFilter||item._source===sourceFilter;});
+
+  var signals=[];
+  all.forEach(function(item){
+    var t=item.ticker;
+    var c=priceCache[t]&&priceCache[t].current||0;
+    var dc=priceCache[t]&&priceCache[t].dayChange||0;
+    var sup=parseFloat(item.support)||0;
+    var res=parseFloat(item.resistance)||0;
+    var w52h=parseFloat(item.week52High)||0;
+    var w52l=parseFloat(item.week52Low)||0;
+    var target=parseFloat(item.targetBuy)||0;
+    var vol=item.volumeSpike==='Yes';
+    var sl=parseFloat(item.stopLoss)||0;
+    var tp=parseFloat((item.takeProfit||'').split('/')[0])||0;
+    var avg=parseFloat(item.avgBuy)||0;
+    var conv=item.conviction||'';
+    var trend=item.trend||'';
+    var mom=parseInt(item.momentum)||0;
+    var isOwned=item._source==='portfolio';
     if(!c)return;
 
-    // Deep advice builder — trader voice, uses real numbers
-    function advice(situation){
-      const stopNote=sl?` Your stop is at $${sl.toFixed(2)} — risk $${Math.abs(c-sl).toFixed(2)}/share.`:'';
-      const tpNote=tp?` Take profit target: $${tp.toFixed(2)}.`:'';
-      const rrNote=(sl&&tp&&avg&&avg>sl)?` R/R: ${((tp-avg)/(avg-sl)).toFixed(1)}x.`:'';
-      const convNote=conv?` Conviction: ${conv}.`:'';
-      const trendNote=trend?` Trend: ${trend}.`:'';
-      return situation+stopNote+tpNote+rrNote+convNote+trendNote;
-    }
-
     if(res&&c>res&&dc>1.5){
-      const str=Math.min(100,Math.round(40+(dc*4)+((c-res)/res*200)));
-      const deepAdvice=isOwned
-        ?advice(`${t} broke above resistance $${res.toFixed(2)} with +${dc.toFixed(1)}% today. This is a bullish breakout — if volume confirms, the next leg could be significant. Consider adding to your position on a retest of $${res.toFixed(2)} as new support.`)
-        :advice(`${t} broke resistance $${res.toFixed(2)}. Momentum traders will pile in. Watch for a retest — if it holds above $${res.toFixed(2)}, that's your entry trigger.`);
-      signals.push({ticker:t,type:'breakout',icon:'⚡',label:'Breakout',color:'#22c55e',bg:'rgba(34,197,94,.07)',border:'rgba(34,197,94,.3)',strength:str,price:c,dc,reason:`Price broke above resistance $${res.toFixed(2)} with +${dc.toFixed(1)}% move`,advice:deepAdvice,source:item._source,isOwned,item});
+      var str=Math.min(100,Math.round(40+(dc*4)+((c-res)/res*200)));
+      var da=isOwned
+        ?buildAdvice(t+' broke above resistance $'+res.toFixed(2)+' with +'+dc.toFixed(1)+'% today. This is a bullish breakout — consider adding on a retest of $'+res.toFixed(2)+' as new support.',c,sl,tp,avg,conv,trend)
+        :buildAdvice(t+' broke resistance $'+res.toFixed(2)+'. Watch for a retest — if it holds above $'+res.toFixed(2)+', that is your entry trigger.',c,sl,tp,avg,conv,trend);
+      signals.push({ticker:t,type:'breakout',icon:'⚡',label:'Breakout',color:'#22c55e',bg:'rgba(34,197,94,.07)',border:'rgba(34,197,94,.3)',strength:str,price:c,dc:dc,reason:'Price broke above resistance $'+res.toFixed(2)+' with +'+dc.toFixed(1)+'% move',advice:da,source:item._source,isOwned:isOwned,item:item});
     }
     if(w52h&&c>=w52h*0.995&&dc>2){
-      const str=Math.min(100,Math.round(55+(dc*3)));
-      const deepAdvice=isOwned
-        ?advice(`${t} is at its 52-week high — every seller from the past year is now in profit. There is NO overhead resistance. Momentum traders will push this. Hold and let it run, but trail your stop up to protect gains.`)
-        :advice(`${t} breaking its 52-week high is one of the strongest signals in trading. No overhead sellers. If this holds into the close, it could run significantly. Watch volume for confirmation before entering.`);
-      signals.push({ticker:t,type:'breakout',icon:'🚀',label:'52w High Breakout',color:'#22c55e',bg:'rgba(34,197,94,.07)',border:'rgba(34,197,94,.3)',strength:str,price:c,dc,reason:`At 52-week high with +${dc.toFixed(1)}% today`,advice:deepAdvice,source:item._source,isOwned,item});
+      var str2=Math.min(100,Math.round(55+(dc*3)));
+      var da2=isOwned
+        ?buildAdvice(t+' is at its 52-week high. There is NO overhead resistance. Hold and let it run, but trail your stop up to protect gains.',c,sl,tp,avg,conv,trend)
+        :buildAdvice(t+' breaking its 52-week high is one of the strongest signals in trading. No overhead sellers. Watch volume for confirmation before entering.',c,sl,tp,avg,conv,trend);
+      signals.push({ticker:t,type:'breakout',icon:'🚀',label:'52w High Breakout',color:'#22c55e',bg:'rgba(34,197,94,.07)',border:'rgba(34,197,94,.3)',strength:str2,price:c,dc:dc,reason:'At 52-week high with +'+dc.toFixed(1)+'% today',advice:da2,source:item._source,isOwned:isOwned,item:item});
     }
     if(sup&&Math.abs(c-sup)/sup<0.04&&dc>=0){
-      const str=Math.min(100,Math.round(50+((1-(Math.abs(c-sup)/sup/0.04))*30)));
-      const deepAdvice=isOwned
-        ?advice(`${t} is bouncing off support $${sup.toFixed(2)} — this is your floor. Buyers are stepping in here. This is a valid add zone if you have conviction.${sl&&c<sl?' WARNING: Price is below your stop loss — reassess your position immediately.':''} `)
-        :advice(`${t} is sitting on support $${sup.toFixed(2)} and bouncing. This is a classic buy-the-dip setup. Entry here with a stop below $${sup.toFixed(2)} gives you a defined risk trade.`);
-      signals.push({ticker:t,type:'support',icon:'🛡️',label:'Support Bounce',color:'#3b82f6',bg:'rgba(59,130,246,.07)',border:'rgba(59,130,246,.3)',strength:str,price:c,dc,reason:`At support $${sup.toFixed(2)}, bouncing +${dc.toFixed(1)}%`,advice:deepAdvice,source:item._source,isOwned,item});
+      var str3=Math.min(100,Math.round(50+((1-(Math.abs(c-sup)/sup/0.04))*30)));
+      var slWarn=sl&&c<sl?' WARNING: Price is below your stop loss — reassess immediately.':'';
+      var da3=isOwned
+        ?buildAdvice(t+' is bouncing off support $'+sup.toFixed(2)+' — buyers are stepping in. Valid add zone if you have conviction.'+slWarn,c,sl,tp,avg,conv,trend)
+        :buildAdvice(t+' is sitting on support $'+sup.toFixed(2)+' and bouncing. Classic buy-the-dip. Entry here with stop below $'+sup.toFixed(2)+' gives a defined risk trade.',c,sl,tp,avg,conv,trend);
+      signals.push({ticker:t,type:'support',icon:'🛡️',label:'Support Bounce',color:'#3b82f6',bg:'rgba(59,130,246,.07)',border:'rgba(59,130,246,.3)',strength:str3,price:c,dc:dc,reason:'At support $'+sup.toFixed(2)+', bouncing +'+dc.toFixed(1)+'%',advice:da3,source:item._source,isOwned:isOwned,item:item});
     }
     if(w52l&&Math.abs(c-w52l)/w52l<0.05){
-      const str=40;
-      const deepAdvice=isOwned
-        ?advice(`${t} is near its 52-week low — this is a danger zone. The stock is at its weakest point of the year.${sl&&c<sl?' Your stop loss has been breached — you should have exited. Reassess now.':' Make sure your stop loss is set. Do not average down without a clear catalyst.'} `)
-        :advice(`${t} is near its annual low. This can be a value trap or a turnaround — do NOT enter without a clear reversal signal. Wait for a strong green candle with volume before considering a position.`);
-      signals.push({ticker:t,type:'risk',icon:'⚠️',label:'Near 52w Low',color:'#ef4444',bg:'rgba(239,68,68,.07)',border:'rgba(239,68,68,.3)',strength:str,price:c,dc,reason:`Within 5% of 52-week low $${w52l.toFixed(2)}`,advice:deepAdvice,source:item._source,isOwned,item});
+      var slBreached=sl&&c<sl?' Stop breached — exit now.':' Set your stop loss immediately.';
+      var da4=isOwned
+        ?buildAdvice(t+' is near its 52-week low — danger zone.'+slBreached,c,sl,tp,avg,conv,trend)
+        :buildAdvice(t+' is near its annual low. Do NOT enter without a clear reversal signal. Wait for a strong green candle with volume.',c,sl,tp,avg,conv,trend);
+      signals.push({ticker:t,type:'risk',icon:'⚠️',label:'Near 52w Low',color:'#ef4444',bg:'rgba(239,68,68,.07)',border:'rgba(239,68,68,.3)',strength:40,price:c,dc:dc,reason:'Within 5% of 52-week low $'+w52l.toFixed(2),advice:da4,source:item._source,isOwned:isOwned,item:item});
     }
     if(!isOwned&&target&&Math.abs(c-target)/target<0.03){
-      const str=85;
-      const deepAdvice=advice(`${t} just hit your target entry of $${target.toFixed(2)}. This is the moment you planned for. Review your thesis — if nothing has changed, this is your trigger. Size your position based on your risk rules and set your stop before executing.`);
-      signals.push({ticker:t,type:'target',icon:'🎯',label:'Target Hit',color:'#a78bfa',bg:'rgba(167,139,250,.07)',border:'rgba(167,139,250,.3)',strength:str,price:c,dc,reason:`$${c.toFixed(2)} within 3% of your target $${target.toFixed(2)}`,advice:deepAdvice,source:item._source,isOwned,item});
+      var da5=buildAdvice(t+' just hit your target entry of $'+target.toFixed(2)+'. Review your thesis — if nothing has changed, this is your trigger. Size based on risk rules and set your stop before executing.',c,0,0,0,conv,trend);
+      signals.push({ticker:t,type:'target',icon:'🎯',label:'Target Hit',color:'#a78bfa',bg:'rgba(167,139,250,.07)',border:'rgba(167,139,250,.3)',strength:85,price:c,dc:dc,reason:'$'+c.toFixed(2)+' within 3% of your target $'+target.toFixed(2),advice:da5,source:item._source,isOwned:isOwned,item:item});
     }
     if(dc>5){
-      const str=Math.min(100,Math.round(30+(dc*5)));
-      const deepAdvice=isOwned
-        ?advice(`${t} is up +${dc.toFixed(1)}% today — a strong session. ${res&&c<res?`Resistance is at $${res.toFixed(2)} — watch if price stalls there.`:''}${tp&&c>tp*0.97?` You are near your take profit at $${tp.toFixed(2)} — consider taking partial profits here.`:''} Trail your stop up to lock in gains.`)
-        :advice(`${t} is surging +${dc.toFixed(1)}% — this is chasing territory. Do NOT buy into a 5%+ move without a pullback. Wait for the first red candle or a retest of today's opening range before considering entry.`);
-      signals.push({ticker:t,type:'mover',icon:'📈',label:'Big Move Up',color:'#86efac',bg:'rgba(134,239,172,.06)',border:'rgba(134,239,172,.25)',strength:str,price:c,dc,reason:`+${dc.toFixed(1)}% today — unusually large move`,advice:deepAdvice,source:item._source,isOwned,item});
+      var str6=Math.min(100,Math.round(30+(dc*5)));
+      var resNote=res&&c<res?'Resistance is at $'+res.toFixed(2)+' — watch if price stalls there. ':'';
+      var tpNote2=tp&&c>tp*0.97?'You are near your take profit at $'+tp.toFixed(2)+' — consider partial profits. ':'';
+      var da6=isOwned
+        ?buildAdvice(t+' is up +'+dc.toFixed(1)+'% today — a strong session. '+resNote+tpNote2+'Trail your stop up to lock in gains.',c,sl,tp,avg,conv,trend)
+        :buildAdvice(t+' is surging +'+dc.toFixed(1)+'% — this is chasing territory. Do NOT buy into a 5%+ move without a pullback. Wait for the first red candle or a retest of today\'s opening range before considering entry.',c,0,0,0,conv,trend);
+      signals.push({ticker:t,type:'mover',icon:'📈',label:'Big Move Up',color:'#86efac',bg:'rgba(134,239,172,.06)',border:'rgba(134,239,172,.25)',strength:str6,price:c,dc:dc,reason:'+'+dc.toFixed(1)+'% today — unusually large move',advice:da6,source:item._source,isOwned:isOwned,item:item});
     }
     if(dc<-5){
-      const str=Math.min(100,Math.round(30+(Math.abs(dc)*5)));
-      const deepAdvice=isOwned
-        ?advice(`${t} is down ${dc.toFixed(1)}% today — significant selling pressure.${sl&&c<sl?' YOUR STOP LOSS HAS BEEN HIT at $'+sl.toFixed(2)+'. Exit now — do not hold and hope. Your plan said exit here.':sl?' Check your stop at $'+sl.toFixed(2)+' — price is approaching it. Be ready to execute.':' You have no stop loss set — define your exit level immediately.'} `)
-        :advice(`${t} is down ${dc.toFixed(1)}%. This could be panic selling or genuine bad news. Check if there is a fundamental reason. If it is panic, watch for a bounce off support. Do NOT catch a falling knife without confirmation.`);
-      signals.push({ticker:t,type:'drop',icon:'🔻',label:'Sharp Drop',color:'#ef4444',bg:'rgba(239,68,68,.07)',border:'rgba(239,68,68,.3)',strength:str,price:c,dc,reason:`${dc.toFixed(1)}% today — significant selling pressure`,advice:deepAdvice,source:item._source,isOwned,item});
+      var str7=Math.min(100,Math.round(30+(Math.abs(dc)*5)));
+      var slHit=sl&&c<sl?' YOUR STOP LOSS HAS BEEN HIT at $'+sl.toFixed(2)+'. Exit now — do not hold and hope.':sl?' Check your stop at $'+sl.toFixed(2)+' — be ready to execute.':' You have no stop loss set — define your exit level immediately.';
+      var da7=isOwned
+        ?buildAdvice(t+' is down '+dc.toFixed(1)+'% today.'+slHit,c,sl,tp,avg,conv,trend)
+        :buildAdvice(t+' is down '+dc.toFixed(1)+'%. Check if there is a fundamental reason. If panic, watch for bounce off support. Do NOT catch a falling knife.',c,0,0,0,conv,trend);
+      signals.push({ticker:t,type:'drop',icon:'🔻',label:'Sharp Drop',color:'#ef4444',bg:'rgba(239,68,68,.07)',border:'rgba(239,68,68,.3)',strength:str7,price:c,dc:dc,reason:dc.toFixed(1)+'% today — significant selling pressure',advice:da7,source:item._source,isOwned:isOwned,item:item});
     }
     if(res&&Math.abs(c-res)/res<0.03&&dc>0){
-      const str=45;
-      const deepAdvice=isOwned
-        ?advice(`${t} is approaching resistance at $${res.toFixed(2)} — sellers are likely waiting here. If you are in profit, consider taking partial profits before resistance. Tighten your stop. If it breaks through resistance on strong volume, that changes the picture.`)
-        :advice(`${t} is approaching resistance $${res.toFixed(2)}. This is NOT a good entry — you would be buying right into a wall of sellers. Wait to see if it breaks through with conviction before entering.`);
-      signals.push({ticker:t,type:'resistance',icon:'🧱',label:'Near Resistance',color:'#f59e0b',bg:'rgba(245,158,11,.07)',border:'rgba(245,158,11,.3)',strength:str,price:c,dc,reason:`Within 3% of resistance $${res.toFixed(2)}`,advice:deepAdvice,source:item._source,isOwned,item});
+      var da8=isOwned
+        ?buildAdvice(t+' is approaching resistance at $'+res.toFixed(2)+' — sellers likely waiting here. Consider partial profits. Tighten stop. If it breaks on strong volume, that changes the picture.',c,sl,tp,avg,conv,trend)
+        :buildAdvice(t+' is approaching resistance $'+res.toFixed(2)+'. NOT a good entry. Wait to see if it breaks through with conviction.',c,0,0,0,conv,trend);
+      signals.push({ticker:t,type:'resistance',icon:'🧱',label:'Near Resistance',color:'#f59e0b',bg:'rgba(245,158,11,.07)',border:'rgba(245,158,11,.3)',strength:45,price:c,dc:dc,reason:'Within 3% of resistance $'+res.toFixed(2),advice:da8,source:item._source,isOwned:isOwned,item:item});
     }
     if(isOwned){
-      getAlerts(item).forEach(a=>{
+      var alerts=getAlerts(item);
+      for(var ai=0;ai<alerts.length;ai++){
+        var a=alerts[ai];
         if(a.price&&Math.abs(c-a.price)/a.price<0.015){
-          const str=95;
-          const deepAdvice=advice(`Your alert at $${a.price.toFixed(2)}${a.label?' ('+a.label+')':''} just fired. This level matters — you set it for a reason. Current price: $${c.toFixed(2)}. Do not ignore this. Review your plan and take action now.`);
-          signals.push({ticker:t,type:'alert',icon:'🔔',label:'Alert Hit',color:'#fbbf24',bg:'rgba(251,191,36,.08)',border:'rgba(251,191,36,.4)',strength:str,price:c,dc,reason:`Price $${c.toFixed(2)} hit your alert $${a.price.toFixed(2)}${a.label?' — '+a.label:''}`,advice:deepAdvice,source:item._source,isOwned,item});
+          var alertLabel=a.label?' ('+a.label+')':'';
+          var da9=buildAdvice('Your alert at $'+a.price.toFixed(2)+alertLabel+' just fired. Current price: $'+c.toFixed(2)+'. Do not ignore this. Review your plan and take action now.',c,sl,tp,avg,conv,trend);
+          signals.push({ticker:t,type:'alert',icon:'🔔',label:'Alert Hit',color:'#fbbf24',bg:'rgba(251,191,36,.08)',border:'rgba(251,191,36,.4)',strength:95,price:c,dc:dc,reason:'Price $'+c.toFixed(2)+' hit your alert $'+a.price.toFixed(2)+(a.label?' — '+a.label:''),advice:da9,source:item._source,isOwned:true,item:item});
         }
-      });
+      }
     }
     if(vol&&trend==='Uptrend'&&dc>0){
-      const str=70;
-      const deepAdvice=isOwned
-        ?advice(`${t} has a volume spike with an uptrend — this is institutional buying. Smart money is accumulating. This validates your position. Hold and let professionals do the heavy lifting. Raise your stop to protect gains.`)
-        :advice(`${t} showing volume spike in an uptrend — institutions are buying. This is a high-quality signal. Look for a pullback entry to an area of value such as the 21 EMA or recent support. Do not chase the spike itself.`);
-      signals.push({ticker:t,type:'volume',icon:'📶',label:'Volume Spike',color:'#c084fc',bg:'rgba(192,132,252,.07)',border:'rgba(192,132,252,.3)',strength:str,price:c,dc,reason:`Volume spike confirmed by ${trend} and +${dc.toFixed(1)}% today`,advice:deepAdvice,source:item._source,isOwned,item});
+      var da10=isOwned
+        ?buildAdvice(t+' has a volume spike with an uptrend — institutional buying. Hold and raise your stop to protect gains.',c,sl,tp,avg,conv,trend)
+        :buildAdvice(t+' showing volume spike in an uptrend — institutions are buying. Look for a pullback entry. Do not chase the spike.',c,0,0,0,conv,trend);
+      signals.push({ticker:t,type:'volume',icon:'📶',label:'Volume Spike',color:'#c084fc',bg:'rgba(192,132,252,.07)',border:'rgba(192,132,252,.3)',strength:70,price:c,dc:dc,reason:'Volume spike confirmed by '+trend+' and +'+dc.toFixed(1)+'% today',advice:da10,source:item._source,isOwned:isOwned,item:item});
     }
     if(isOwned&&sl&&c<sl*1.02&&c>sl*0.98){
-      const str=92;
-      const deepAdvice=`${t} is within 2% of your stop loss at $${sl.toFixed(2)}. Current: $${c.toFixed(2)}. This is a critical moment — your risk management plan says to exit at $${sl.toFixed(2)}. Prepare your exit order now. Do not move your stop lower to avoid the loss. Honour your plan.`;
-      signals.push({ticker:t,type:'stoploss',icon:'🚨',label:'Stop Loss Zone',color:'#ef4444',bg:'rgba(239,68,68,.1)',border:'rgba(239,68,68,.5)',strength:str,price:c,dc,reason:`Within 2% of stop loss $${sl.toFixed(2)}`,advice:deepAdvice,source:item._source,isOwned,item});
+      var da11=t+' is within 2% of your stop loss at $'+sl.toFixed(2)+'. Current: $'+c.toFixed(2)+'. Prepare your exit order now. Do not move your stop lower. Honour your plan.';
+      signals.push({ticker:t,type:'stoploss',icon:'🚨',label:'Stop Loss Zone',color:'#ef4444',bg:'rgba(239,68,68,.1)',border:'rgba(239,68,68,.5)',strength:92,price:c,dc:dc,reason:'Within 2% of stop loss $'+sl.toFixed(2),advice:da11,source:item._source,isOwned:true,item:item});
     }
-  });
-
-    // ── SELL SIGNALS ──
-    // Near take profit — trim
     if(isOwned&&tp&&c>=tp*0.96){
-      const str=Math.min(100,Math.round(70+(c-tp*0.96)/(tp*0.04)*20));
-      const deepAdvice=advice(`${t} is within 4% of your take profit at $${tp.toFixed(2)}. This is the moment to consider taking partial profits. Lock in gains. You can always re-enter if momentum continues.`);
-      signals.push({ticker:t,type:'sell_tp',icon:'💰',label:'Near Take Profit',color:'#22c55e',bg:'rgba(34,197,94,.07)',border:'rgba(34,197,94,.3)',strength:str,price:c,dc,reason:`Price near take profit $${tp.toFixed(2)} — consider trimming`,advice:deepAdvice,source:item._source,isOwned,isSell:true,item});
+      var str12=Math.min(100,Math.round(70+(c-tp*0.96)/(tp*0.04)*20));
+      var da12=buildAdvice(t+' is within 4% of your take profit at $'+tp.toFixed(2)+'. Consider taking partial profits. Lock in gains. You can always re-enter if momentum continues.',c,sl,tp,avg,conv,trend);
+      signals.push({ticker:t,type:'sell_tp',icon:'💰',label:'Near Take Profit',color:'#22c55e',bg:'rgba(34,197,94,.07)',border:'rgba(34,197,94,.3)',strength:str12,price:c,dc:dc,reason:'Price near take profit $'+tp.toFixed(2)+' — consider trimming',advice:da12,source:item._source,isOwned:true,isSell:true,item:item});
     }
-    // RSI overbought + resistance — take profits
     if(isOwned&&res&&c>res*0.97&&c<res*1.02){
-      const str=65;
-      const deepAdvice=advice(`${t} is pressing against resistance at $${res.toFixed(2)}. Smart money takes partial profits here. You do not need to exit fully — but scaling out 30–50% of your position reduces risk while keeping upside exposure.`);
-      signals.push({ticker:t,type:'sell_resist',icon:'🧱',label:'Sell at Resistance',color:'#f59e0b',bg:'rgba(245,158,11,.07)',border:'rgba(245,158,11,.3)',strength:str,price:c,dc,reason:`At resistance $${res.toFixed(2)} — profit-taking zone`,advice:deepAdvice,source:item._source,isOwned,isSell:true,item});
+      var da13=buildAdvice(t+' is pressing against resistance at $'+res.toFixed(2)+'. Smart money takes partial profits here. Scale out 30-50% of your position to reduce risk while keeping upside exposure.',c,sl,tp,avg,conv,trend);
+      signals.push({ticker:t,type:'sell_resist',icon:'🧱',label:'Sell at Resistance',color:'#f59e0b',bg:'rgba(245,158,11,.07)',border:'rgba(245,158,11,.3)',strength:65,price:c,dc:dc,reason:'At resistance $'+res.toFixed(2)+' — profit-taking zone',advice:da13,source:item._source,isOwned:true,isSell:true,item:item});
     }
-    // Downtrend + negative day — reduce exposure
     if(isOwned&&trend==='Downtrend'&&dc<-2){
-      const str=Math.min(100,Math.round(55+Math.abs(dc)*3));
-      const deepAdvice=advice(`${t} is in a confirmed downtrend and falling ${dc.toFixed(1)}% today. This is a sell signal. The trend is your enemy if you are long. Consider reducing your position size by 50% and re-evaluating.`);
-      signals.push({ticker:t,type:'sell_trend',icon:'📉',label:'Downtrend — Reduce',color:'#ef4444',bg:'rgba(239,68,68,.07)',border:'rgba(239,68,68,.3)',strength:str,price:c,dc,reason:`Downtrend confirmed, falling ${dc.toFixed(1)}% today`,advice:deepAdvice,source:item._source,isOwned,isSell:true,item});
+      var str14=Math.min(100,Math.round(55+Math.abs(dc)*3));
+      var da14=buildAdvice(t+' is in a confirmed downtrend and falling '+dc.toFixed(1)+'% today. Consider reducing your position size by 50% and re-evaluating.',c,sl,tp,avg,conv,trend);
+      signals.push({ticker:t,type:'sell_trend',icon:'📉',label:'Downtrend — Reduce',color:'#ef4444',bg:'rgba(239,68,68,.07)',border:'rgba(239,68,68,.3)',strength:str14,price:c,dc:dc,reason:'Downtrend confirmed, falling '+dc.toFixed(1)+'% today',advice:da14,source:item._source,isOwned:true,isSell:true,item:item});
     }
-    // Stop loss breach — EXIT NOW
     if(isOwned&&sl&&c<sl){
-      const str=99;
-      const deepAdvice=`${t} HAS BREACHED YOUR STOP LOSS of $${sl.toFixed(2)}. Current price: $${c.toFixed(2)}. Exit NOW. Do not wait, do not hope for a bounce. Every second you hold past your stop increases your loss. Your plan said exit here — honour it.`;
-      signals.push({ticker:t,type:'sell_stop',icon:'🚨',label:'EXIT NOW — Stop Hit',color:'#ef4444',bg:'rgba(239,68,68,.15)',border:'rgba(239,68,68,.8)',strength:str,price:c,dc,reason:`Stop loss $${sl.toFixed(2)} breached — mandatory exit`,advice:deepAdvice,source:item._source,isOwned,isSell:true,item});
+      var da15=t+' HAS BREACHED YOUR STOP LOSS of $'+sl.toFixed(2)+'. Current: $'+c.toFixed(2)+'. Exit NOW. Do not wait, do not hope for a bounce. Every second you hold past your stop increases your loss. Honour your plan.';
+      signals.push({ticker:t,type:'sell_stop',icon:'🚨',label:'EXIT NOW — Stop Hit',color:'#ef4444',bg:'rgba(239,68,68,.15)',border:'rgba(239,68,68,.8)',strength:99,price:c,dc:dc,reason:'Stop loss $'+sl.toFixed(2)+' breached — mandatory exit',advice:da15,source:item._source,isOwned:true,isSell:true,item:item});
     }
-    // Any owned position with a day move — always show something
-    if(isOwned&&Math.abs(dc)>=1&&signals.filter(sig=>sig.ticker===t).length===0){
-      const str=Math.round(25+Math.abs(dc)*3);
-      const deepAdvice=advice(`${t} moved ${dc>=0?'+':''}${dc.toFixed(1)}% today. ${dc>0?'Positive session — monitor for continuation. Keep your stop in place.':'Negative session — check if your thesis is still valid. Is there news?'}`);
-      signals.push({ticker:t,type:'dayMove',icon:dc>0?'📊':'📉',label:dc>0?'Positive Day':'Negative Day',color:dc>0?'#86efac':'#fca5a5',bg:dc>0?'rgba(134,239,172,.05)':'rgba(252,165,165,.05)',border:dc>0?'rgba(134,239,172,.2)':'rgba(252,165,165,.2)',strength:str,price:c,dc,reason:`${dc>=0?'+':''}${dc.toFixed(1)}% today`,advice:deepAdvice,source:item._source,isOwned,item});
+    if(isOwned&&Math.abs(dc)>=1&&signals.filter(function(sig){return sig.ticker===t;}).length===0){
+      var str16=Math.round(25+Math.abs(dc)*3);
+      var dayTxt=t+' moved '+(dc>=0?'+':'')+dc.toFixed(1)+'% today. '+(dc>0?'Positive session — monitor for continuation. Keep your stop in place.':'Negative session — check if your thesis is still valid. Is there news?');
+      var da16=buildAdvice(dayTxt,c,sl,tp,avg,conv,trend);
+      var dayReason=(dc>=0?'+':'')+dc.toFixed(1)+'% today';
+      signals.push({ticker:t,type:'dayMove',icon:dc>0?'📊':'📉',label:dc>0?'Positive Day':'Negative Day',color:dc>0?'#86efac':'#fca5a5',bg:dc>0?'rgba(134,239,172,.05)':'rgba(252,165,165,.05)',border:dc>0?'rgba(134,239,172,.2)':'rgba(252,165,165,.2)',strength:str16,price:c,dc:dc,reason:dayReason,advice:da16,source:item._source,isOwned:true,item:item});
     }
   });
 
-  const deduped=[];const seen={};
-  signals.sort((a,b)=>b.strength-a.strength).forEach(s=>{
-    const key=s.ticker+'_'+s.type;
+  var deduped=[];var seen={};
+  signals.sort(function(a,b){return b.strength-a.strength;}).forEach(function(s){
+    var key=s.ticker+'_'+s.type;
     if(!seen[key]){seen[key]=true;deduped.push(s);}
   });
-  return deduped.sort((a,b)=>b.strength-a.strength);
+  return deduped.sort(function(a,b){return b.strength-a.strength;});
 }
 
 // ── MARKET OPPORTUNITIES (broad scan) ──
@@ -4905,7 +4898,6 @@ function buildWidgetHTML(order,{winners,losers,watchMovers,bySector,bestSector,m
     earnings:{wide:true,enabled:()=>widgetConfig.earnings,html:()=>`<div class="card"><span class="drag-handle">⠿</span><div class="card-title">📅 Upcoming earnings ${tipIcon('Earnings dates for stocks in your portfolio in the next 30 days.')}</div><div id="earningsWidget"><div class="muted" style="font-size:12px">Loading...</div></div></div>`},
     news:{wide:true,enabled:()=>widgetConfig.news,html:()=>`<div class="card"><span class="drag-handle">⠿</span><div class="card-title">📰 News for your stocks ${tipIcon('Latest news headlines for stocks in your portfolio.')}</div><div id="newsWidget"><div class="muted" style="font-size:12px">Loading news...</div></div></div>`},
     forecast:{wide:true,enabled:()=>widgetConfig.forecast,html:()=>`<div class="card"><span class="drag-handle">⠿</span><div class="card-title">🔮 Forecast signals ${tipIcon('Technical signals based on price momentum and trend. Not financial advice.')}</div><div id="forecastWidget">${renderForecast()}</div></div>`},
-,
     btcLeading:{wide:true,enabled:()=>widgetConfig.btcLeading!==false,html:()=>`<div class="btc-widget"><span class="drag-handle">⠿</span><div class="card-title" style="color:#f7931a">₿ BTC Leading Indicator ${tipIcon('Uses Bitcoin price action as a leading indicator to predict short-term direction of BTC-correlated stocks like STRIVE.')}</div><div id="btcWidgetInner"><div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:.75rem"><select id="btcStock" style="padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px;outline:none;cursor:pointer"><option value="MSTR">MSTR (MicroStrategy)</option><option value="COIN">COIN (Coinbase)</option>${positions.filter(p=>['MSTR','COIN','RIOT','MARA','CLSK','CIFR','BTBT','HUT','CORZ','IREN'].includes(p.ticker)||p.ticker==='STRIVE').map(p=>`<option value="${esc(p.ticker)}" selected>${esc(p.ticker)}</option>`).join('')}${watchlist.filter(w=>['MSTR','COIN','RIOT','MARA','STRIVE'].includes(w.ticker)).map(w=>`<option value="${esc(w.ticker)}">${esc(w.ticker)}</option>`).join('')}</select><button onclick="runBTCAnalysis()" style="padding:6px 14px;border-radius:var(--radius);border:1px solid rgba(247,147,26,.4);background:rgba(247,147,26,.1);color:#f7931a;font-size:12px;font-weight:700;cursor:pointer">⚡ Analyse</button></div><div id="btcResult" style="font-size:12px;color:var(--text3)">Select a stock and tap Analyse to run the BTC correlation analysis.</div></div></div>`},
     activity:{wide:true,enabled:()=>widgetConfig.activity,html:()=>`<div class="card interactive" onclick="openWidgetPopup('activity')"><span class="drag-handle">⠿</span><div class="card-title">🕐 Recent activity</div>${notifications.slice(0,5).map(n=>{const icons={alert:'🔔',gain:'📈',loss:'📉',move:'⚡',scanner:'🔭'};return`<div style="padding:7px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:flex-start"><span style="font-size:16px">${icons[n.type]||'📌'}</span><div><div style="font-size:12px;font-weight:600">${esc(n.title)}</div><div style="font-size:11px;color:var(--text3)">${timeAgo(n.created_at)}</div></div></div>`;}).join('')||'<div class="muted" style="font-size:12px">Activity will appear here as you use the app.</div>'}</div>`}
   };
