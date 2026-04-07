@@ -384,6 +384,86 @@ tr.leg-row.hidden{display:none}
 .fc-signal{padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600}
 
 
+
+
+/* MOBILE QA FIXES */
+@media(max-width:768px){
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .tbl-wrap table{min-width:900px}
+  .tbl-wrap th:first-child,.tbl-wrap td:first-child{position:sticky;left:0;background:var(--bg2);z-index:2}
+  .tm-body{grid-template-columns:1fr!important;padding:1rem}
+  .tm-section-full{grid-column:1!important}
+  .sell-modal{border-radius:20px 20px 0 0;padding:1.25rem}
+  .sell-pct-btn{padding:12px 8px;min-height:44px}
+  .ai-wrap{height:calc(100vh - 160px)}
+  .bt-card{min-height:44px}
+  .qt-card{padding:.875rem}
+  .ti-tabs{padding:3px;gap:2px}
+  .ti-tab{padding:8px 10px;font-size:11px}
+  .nav-item,.mob-tab{min-height:44px}
+  .action-list li{min-height:44px;align-items:center}
+  .tv-hdr button{min-width:44px;min-height:44px}
+}
+
+/* AUTH */
+.auth-screen{position:fixed;inset:0;background:var(--bg);z-index:99999;display:flex;align-items:center;justify-content:center;padding:1.5rem}
+.auth-card{background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:2.5rem 2rem;width:100%;max-width:380px;text-align:center}
+.auth-logo{font-size:48px;margin-bottom:1rem}
+.auth-title{font-size:22px;font-weight:800;margin-bottom:4px}
+.auth-sub{font-size:13px;color:var(--text3);margin-bottom:2rem}
+.auth-input{width:100%;padding:14px 16px;border-radius:12px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:16px;outline:none;font-family:inherit;text-align:center;letter-spacing:3px;margin-bottom:1rem;box-sizing:border-box}
+.auth-input:focus{border-color:var(--accent)}
+.auth-btn{width:100%;padding:14px;border-radius:12px;background:var(--accent);color:#fff;border:none;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .15s;margin-bottom:.75rem}
+.auth-btn:hover{opacity:.9}
+.auth-btn:disabled{opacity:.5;cursor:not-allowed}
+.auth-remember{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:var(--text2);cursor:pointer;margin-bottom:.75rem}
+.auth-error{color:var(--red);font-size:13px;margin-bottom:.75rem;min-height:20px}
+.auth-hint{font-size:11px;color:var(--text3)}
+
+
+
+/* TRADE INTELLIGENCE */
+.ti-tabs{display:flex;gap:3px;background:var(--bg3);padding:3px;border-radius:var(--radius-lg);margin-bottom:1.25rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.ti-tabs::-webkit-scrollbar{display:none}
+.ti-tab{padding:8px 14px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;transition:all .15s;color:var(--text2)}
+.ti-tab.active{background:var(--bg2);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+.ti-section{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:.75rem}
+.ti-label{font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.5rem}
+.ti-input{width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:13px;outline:none;font-family:inherit;box-sizing:border-box}
+.ti-input:focus{border-color:var(--accent)}
+.ti-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);gap:8px}
+.ti-row:last-child{border-bottom:none}
+.action-buy{background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.3);padding:4px 12px;border-radius:20px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.action-wait{background:rgba(245,158,11,.12);color:#f59e0b;border:1px solid rgba(245,158,11,.3);padding:4px 12px;border-radius:20px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.action-avoid{background:rgba(239,68,68,.12);color:#ef4444;border:1px solid rgba(239,68,68,.3);padding:4px 12px;border-radius:20px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.regime-green{background:rgba(34,197,94,.1);color:#22c55e;border:1px solid rgba(34,197,94,.25);padding:3px 10px;border-radius:8px;font-size:11px;font-weight:700}
+.regime-yellow{background:rgba(245,158,11,.1);color:#f59e0b;border:1px solid rgba(245,158,11,.25);padding:3px 10px;border-radius:8px;font-size:11px;font-weight:700}
+.regime-red{background:rgba(239,68,68,.1);color:#ef4444;border:1px solid rgba(239,68,68,.25);padding:3px 10px;border-radius:8px;font-size:11px;font-weight:700}
+.score-bar{height:6px;background:var(--bg4);border-radius:3px;overflow:hidden;margin-top:4px}
+.score-bar-fill{height:100%;border-radius:3px;transition:width .5s}
+.ti-stock-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:1rem;margin-bottom:.75rem;cursor:pointer;transition:all .15s}
+.ti-stock-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.ti-expanded{background:rgba(124,111,255,.04);border-top:1px solid var(--border);margin-top:.75rem;padding-top:.75rem}
+.risk-lower{color:#22c55e;font-weight:700;font-size:12px}
+.risk-moderate{color:#f59e0b;font-weight:700;font-size:12px}
+.risk-high{color:#ef4444;font-weight:700;font-size:12px}
+
+/* SELL MODAL */
+.sell-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:8000;display:flex;align-items:flex-end;justify-content:center}
+.sell-modal{background:var(--bg2);border:1px solid var(--border2);border-radius:20px 20px 0 0;width:100%;max-width:520px;padding:1.5rem;max-height:90vh;overflow-y:auto}
+.sell-pct-row{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:1rem 0}
+.sell-pct-btn{padding:10px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:13px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s}
+.sell-pct-btn.active{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.4);color:var(--red)}
+/* QUICK TRADES */
+.qt-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-lg);padding:1rem 1.1rem;margin-bottom:.75rem;cursor:pointer;transition:all .15s}
+.qt-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.qt-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+/* TV MODAL */
+.tv-modal{position:fixed;inset:0;background:#000;z-index:9500;display:flex;flex-direction:column}
+.tv-modal.hidden{display:none}
+.tv-hdr{display:flex;align-items:center;gap:12px;padding:.75rem 1rem;background:rgba(9,9,15,.9);border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0}
+.tv-chart-frame{flex:1;border:none;width:100%}
+
 /* BTC WIDGET */
 .btc-widget{background:linear-gradient(135deg,rgba(247,147,26,.06),rgba(124,111,255,.04));border:1px solid rgba(247,147,26,.2);border-radius:var(--radius-lg);padding:1.1rem}
 .btc-step{border-left:2px solid;padding-left:.75rem;margin-bottom:.75rem}
@@ -480,12 +560,15 @@ tr.leg-row.hidden{display:none}
     <div class="nav-item active" id="nav-dashboard" onclick="go('dashboard')"><span class="nav-icon">🏠</span><span class="nav-label">Dashboard</span></div>
     <div class="nav-item" id="nav-portfolio" onclick="go('portfolio')"><span class="nav-icon">💼</span><span class="nav-label">Portfolio</span></div>
     <div class="nav-item" id="nav-alerts" onclick="go('alerts')"><span class="nav-icon">🔔</span><span class="nav-label">Alerts</span><span class="nav-badge" id="navAlertBadge" style="display:none">0</span></div>
+    <div class="nav-item" id="nav-ti" onclick="go('ti')"><span class="nav-icon">🧠</span><span class="nav-label">Trade Intel</span></div>
     <div class="nav-item" id="nav-scanner" onclick="go('scanner')"><span class="nav-icon">🔭</span><span class="nav-label">Scanner</span></div>
     <div class="nav-item" id="nav-learn" onclick="go('learn')"><span class="nav-icon">📚</span><span class="nav-label">Learn</span></div>
     <div class="nav-item" id="nav-notifications" onclick="go('notifications')"><span class="nav-icon">📬</span><span class="nav-label">Notifications</span><span class="nav-badge" id="navNotifBadge" style="display:none">0</span></div>
     <div class="nav-group">Insights</div>
     <div class="nav-item" id="nav-analytics" onclick="go('analytics')"><span class="nav-icon">📊</span><span class="nav-label">Analytics</span></div>
     <div class="nav-group">System</div>
+    <div class="nav-item" id="nav-trades" onclick="go('trades')"><span class="nav-icon">⚡</span><span class="nav-label">Quick Trades</span></div>
+    <div class="nav-item" id="nav-charts" onclick="go('charts')"><span class="nav-icon">📈</span><span class="nav-label">Charts</span></div>
     <div class="nav-item" id="nav-ai" onclick="go('ai')"><span class="nav-icon">🤖</span><span class="nav-label">AI Advisor</span></div>
     <div class="nav-item" id="nav-settings" onclick="go('settings')"><span class="nav-icon">⚙️</span><span class="nav-label">Settings</span></div>
     <div class="sb-footer">v4.0 · Supabase sync</div>
@@ -516,10 +599,22 @@ tr.leg-row.hidden{display:none}
     <div class="mob-tabs-inner">
       <div class="mob-tab active" id="mob-dashboard" onclick="go('dashboard')"><span class="mob-tab-icon">🏠</span>Home</div>
       <div class="mob-tab" id="mob-portfolio" onclick="go('portfolio')"><span class="mob-tab-icon">💼</span>Stocks</div>
-      <div class="mob-tab" id="mob-learn" onclick="go('learn')"><span class="mob-tab-icon">📚</span>Learn</div>
       <div class="mob-tab" id="mob-scanner" onclick="go('scanner')"><span class="mob-tab-icon">🔭</span>Scan</div>
       <div class="mob-tab" id="mob-ai" onclick="go('ai')"><span class="mob-tab-icon">🤖</span>AI</div>
-      <div class="mob-tab" id="mob-settings" onclick="go('settings')"><span class="mob-tab-icon">⚙️</span>Settings</div>
+      <div class="mob-tab" id="mob-more" onclick="toggleMobMore()"><span class="mob-tab-icon">⋯</span>More</div>
+    </div>
+    <!-- Mobile More Drawer -->
+    <div id="mobMoreDrawer" style="display:none;position:fixed;bottom:var(--mob-tab);left:0;right:0;background:var(--bg2);border-top:1px solid var(--border2);z-index:301;padding:.75rem;display:none">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem">
+        <div onclick="go('ti');closeMobMore()" style="display:flex;flex-direction:column;align-items:center;padding:.75rem .5rem;border-radius:10px;background:var(--bg3);cursor:pointer;gap:4px"><span style="font-size:20px">🧠</span><span style="font-size:10px;color:var(--text2)">Trade Intel</span></div>
+        <div onclick="go('trades');closeMobMore()" style="display:flex;flex-direction:column;align-items:center;padding:.75rem .5rem;border-radius:10px;background:var(--bg3);cursor:pointer;gap:4px"><span style="font-size:20px">⚡</span><span style="font-size:10px;color:var(--text2)">Quick Trades</span></div>
+        <div onclick="go('charts');closeMobMore()" style="display:flex;flex-direction:column;align-items:center;padding:.75rem .5rem;border-radius:10px;background:var(--bg3);cursor:pointer;gap:4px"><span style="font-size:20px">📈</span><span style="font-size:10px;color:var(--text2)">Charts</span></div>
+        <div onclick="go('analytics');closeMobMore()" style="display:flex;flex-direction:column;align-items:center;padding:.75rem .5rem;border-radius:10px;background:var(--bg3);cursor:pointer;gap:4px"><span style="font-size:20px">📊</span><span style="font-size:10px;color:var(--text2)">Analytics</span></div>
+        <div onclick="go('learn');closeMobMore()" style="display:flex;flex-direction:column;align-items:center;padding:.75rem .5rem;border-radius:10px;background:var(--bg3);cursor:pointer;gap:4px"><span style="font-size:20px">📚</span><span style="font-size:10px;color:var(--text2)">Learn</span></div>
+        <div onclick="go('alerts');closeMobMore()" style="display:flex;flex-direction:column;align-items:center;padding:.75rem .5rem;border-radius:10px;background:var(--bg3);cursor:pointer;gap:4px"><span style="font-size:20px">🔔</span><span style="font-size:10px;color:var(--text2)">Alerts</span></div>
+        <div onclick="go('notifications');closeMobMore()" style="display:flex;flex-direction:column;align-items:center;padding:.75rem .5rem;border-radius:10px;background:var(--bg3);cursor:pointer;gap:4px"><span style="font-size:20px">📬</span><span style="font-size:10px;color:var(--text2)">Notifs</span></div>
+        <div onclick="go('settings');closeMobMore()" style="display:flex;flex-direction:column;align-items:center;padding:.75rem .5rem;border-radius:10px;background:var(--bg3);cursor:pointer;gap:4px"><span style="font-size:20px">⚙️</span><span style="font-size:10px;color:var(--text2)">Settings</span></div>
+      </div>
     </div>
   </div>
 </div>
@@ -789,8 +884,7 @@ function renderDiagram(type){
 }
 
 // ── SUPABASE ──
-async function fetchWithTimeout(url,opts={},ms=6000){const ctrl=new AbortController();const tid=setTimeout(()=>ctrl.abort(),ms);try{const r=await fetch(url,{...opts,signal:ctrl.signal});clearTimeout(tid);return r;}catch(e){clearTimeout(tid);throw e;}}
-async function sbQ(url,params=''){const r=await fetchWithTimeout(url+(params?'?'+params+'&select=*':'?select=*'),{headers:H});if(!r.ok)throw new Error(await r.text());return r.json();}
+async function sbQ(url,params=''){const r=await fetch(url+(params?'?'+params+'&select=*':'?select=*'),{headers:H});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function sbIns(url,data){const r=await fetch(url,{method:'POST',headers:H,body:JSON.stringify(data)});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function sbUpd(url,filter,data){const r=await fetch(url+'?'+filter,{method:'PATCH',headers:H,body:JSON.stringify(data)});if(!r.ok)throw new Error(await r.text());return r.json();}
 async function sbDel(url,filter){const r=await fetch(url+'?'+filter,{method:'DELETE',headers:H});if(!r.ok)throw new Error(await r.text());}
@@ -845,26 +939,24 @@ async function markLessonComplete(key){if(completedLessons.has(key))return;compl
 
 // ── INIT ──
 async function init(){
-  try{apiKey=localStorage.getItem('ts_key')||'';}catch(e){}
+  setLM('Connecting...');
+  // Check authentication first
+  const authed=await checkAuth();
+  if(!authed)return; // auth screen will handle booting
+}
+
+async function bootApp(){
   setLM('Loading portfolio...');
-  try{
-    [positions,watchlist,notifications,priceCache,stockNotes]=await Promise.all([
-      loadPositions(),loadWatch(),loadNotifications(),loadPrices(),loadNotes()
-    ]);
-  }catch(e){
-    console.warn('DB load error:',e);
-    positions=[];watchlist=[];notifications=[];priceCache={};stockNotes={};
-  }
-  let sk=null,oak=null,swc=null,sor=null;
-  try{[sk,oak,swc,sor]=await Promise.all([
-    getSetting('finnhub_key'),getSetting('openai_key'),getSetting('widget_config'),getSetting('widget_order')
-  ]);}catch(e){}
-  if(sk&&!apiKey){apiKey=sk;try{localStorage.setItem('ts_key',apiKey);}catch(e){}}
-  if(oak)openaiKey=oak;
-  if(swc)try{Object.assign(widgetConfig,JSON.parse(swc));}catch(e){}
-  if(sor)try{widgetOrder=JSON.parse(sor);}catch(e){}
-  try{learnStreak=await loadLearnStreak();}catch(e){}
-  try{completedLessons=await loadCompletedLessons();}catch(e){}
+  try{apiKey=localStorage.getItem('ts_key')||'';}catch(e){}
+  [positions,watchlist,notifications,priceCache,stockNotes]=await Promise.all([loadPositions(),loadWatch(),loadNotifications(),loadPrices(),loadNotes()]);
+  const savedKey=await getSetting('finnhub_key');
+  if(savedKey&&!apiKey){apiKey=savedKey;try{localStorage.setItem('ts_key',apiKey);}catch(e){}}
+  const savedOAKey=await getSetting('openai_key');
+  if(savedOAKey)openaiKey=savedOAKey;
+  const savedWC=await getSetting('widget_config');if(savedWC)try{Object.assign(widgetConfig,JSON.parse(savedWC));}catch(e){}
+  const savedOrder=await getSetting('widget_order');if(savedOrder)try{widgetOrder=JSON.parse(savedOrder);}catch(e){}
+  learnStreak=await loadLearnStreak();
+  completedLessons=await loadCompletedLessons();
   currentLesson=getTodayLesson();
   setSyncStatus('ok');
   updateNotifBadge();
@@ -872,6 +964,7 @@ async function init(){
   go('dashboard');
   if(apiKey&&positions.length)refreshPrices();
   setInterval(checkAlerts,60000);
+  setInterval(checkSellAlerts,60000);
   setInterval(autoSync,30000);
 }
 function setLM(m){const el=document.getElementById('loadMsg');if(el)el.textContent=m;}
@@ -920,6 +1013,9 @@ function go(p){
   else if(p==='analytics')renderAnalytics();
   else if(p==='settings')renderSettings();
   else if(p==='ai')renderAIAdvisor();
+  else if(p==='ti')renderTradeIntelligence();
+  else if(p==='trades')renderQuickTrades();
+  else if(p==='charts')renderChartsPage();
   closeSB();
 }
 
@@ -1402,7 +1498,7 @@ function renderOwned(container){
         <th onclick="cyclePSort('dayChange')" style="cursor:pointer;user-select:none">Day % ${pSortArrow('dayChange')}</th>
         <th>Type</th><th>Conviction</th><th>Risk</th>
         <th onclick="cyclePSort('urgency')" style="cursor:pointer;user-select:none">Action ${pSortArrow('urgency')}</th>
-        <th>Alerts</th><th>Trend</th>
+        <th>Alerts</th><th>Trend</th><th>Sell</th>
       </tr></thead>
       <tbody id="ptbody"></tbody>
     </table></div></div>
@@ -1626,6 +1722,7 @@ function renderDrawerTab(){
       </div>
       <div style="display:flex;gap:8px;margin-top:1rem;flex-wrap:wrap">
         <button class="btn primary" onclick="closeDrawer();openModalEdit(${currentDrawerPos})">✏️ Edit position</button>
+        <button class="btn danger sm" onclick="openSellModal('${esc(p.ticker)}')">💸 Sell</button>
         <button class="btn danger" onclick="deletePosConfirm(${currentDrawerPos})">Delete</button>
       </div>`;
   }else if(currentDrawerTab==='plan'){
@@ -1839,6 +1936,7 @@ function buildScannerSignals(sourceFilter){
       const deepAdvice=`${t} is within 2% of your stop loss at $${sl.toFixed(2)}. Current: $${c.toFixed(2)}. This is a critical moment — your risk management plan says to exit at $${sl.toFixed(2)}. Prepare your exit order now. Do not move your stop lower to avoid the loss. Honour your plan.`;
       signals.push({ticker:t,type:'stoploss',icon:'🚨',label:'Stop Loss Zone',color:'#ef4444',bg:'rgba(239,68,68,.1)',border:'rgba(239,68,68,.5)',strength:str,price:c,dc,reason:`Within 2% of stop loss $${sl.toFixed(2)}`,advice:deepAdvice,source:item._source,isOwned,item});
     }
+  });
 
     // ── SELL SIGNALS ──
     // Near take profit — trim
@@ -3136,6 +3234,1197 @@ async function runBTCAnalysis(){
 }
 
 
+
+// ══════════════════════════════════════════════════════
+// AUTH ENGINE
+// ══════════════════════════════════════════════════════
+const AUTH_TOKEN_KEY='portfolio_auth_token';
+const AUTH_EXPIRY_KEY='portfolio_auth_expiry';
+const AUTH_DAYS=30;
+
+async function checkAuth(){
+  // Check device token first
+  try{
+    const token=localStorage.getItem(AUTH_TOKEN_KEY);
+    const expiry=localStorage.getItem(AUTH_EXPIRY_KEY);
+    if(token&&expiry&&Date.now()<parseInt(expiry)){
+      // Verify token matches stored
+      const storedToken=await getSetting('auth_device_token');
+      if(storedToken&&storedToken===token)return true;
+    }
+  }catch(e){}
+
+  // Check if password has been set
+  const hasPass=await getSetting('auth_password_hash');
+  const authScreen=document.getElementById('authScreen');
+  if(!hasPass){
+    // First launch — setup mode
+    showAuthScreen('setup');
+  } else {
+    // Normal login
+    showAuthScreen('login');
+  }
+  return false;
+}
+
+function showAuthScreen(mode){
+  const screen=document.getElementById('authScreen');
+  const sub=document.getElementById('authSub');
+  const btn=document.getElementById('authBtn');
+  const confirmWrap=document.getElementById('authConfirmWrap');
+  const rememberWrap=document.getElementById('authRememberWrap');
+  const hint=document.getElementById('authHint');
+  screen.style.display='flex';
+  if(mode==='setup'){
+    sub.textContent='Welcome! Create a password to secure your portfolio.';
+    btn.textContent='Create Password';
+    confirmWrap.style.display='block';
+    hint.textContent='You only set this once. You can change it in Settings anytime.';
+    btn.setAttribute('data-mode','setup');
+  } else {
+    sub.textContent='Enter your password to access your portfolio.';
+    btn.textContent='Unlock';
+    confirmWrap.style.display='none';
+    hint.textContent='Forgot your password? Reset it from Settings on a trusted device.';
+    btn.setAttribute('data-mode','login');
+  }
+  setTimeout(()=>document.getElementById('authInput')?.focus(),100);
+}
+
+async function hashPassword(pass){
+  const encoder=new TextEncoder();
+  const data=encoder.encode(pass+'shimar_portfolio_salt_v1');
+  const hashBuffer=await crypto.subtle.digest('SHA-256',data);
+  const hashArray=Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function generateToken(){
+  return Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function submitAuth(){
+  const btn=document.getElementById('authBtn');
+  const mode=btn.getAttribute('data-mode')||'login';
+  const pass=(document.getElementById('authInput')?.value||'').trim();
+  const errEl=document.getElementById('authError');
+  errEl.textContent='';
+
+  if(!pass||pass.length<4){errEl.textContent='Password must be at least 4 characters.';return;}
+
+  btn.disabled=true;
+  btn.textContent='Checking...';
+
+  if(mode==='setup'){
+    const confirm=(document.getElementById('authConfirm')?.value||'').trim();
+    if(pass!==confirm){errEl.textContent='Passwords do not match.';btn.disabled=false;btn.textContent='Create Password';return;}
+    const hash=await hashPassword(pass);
+    await setSetting('auth_password_hash',hash);
+    await completeLogin();
+  } else {
+    const hash=await hashPassword(pass);
+    const stored=await getSetting('auth_password_hash');
+    if(hash!==stored){
+      errEl.textContent='Incorrect password. Try again.';
+      btn.disabled=false;btn.textContent='Unlock';
+      document.getElementById('authInput').value='';
+      document.getElementById('authInput').focus();
+      return;
+    }
+    await completeLogin();
+  }
+}
+
+async function completeLogin(){
+  const remember=document.getElementById('authRemember')?.checked!==false;
+  if(remember){
+    const token=generateToken();
+    const expiry=Date.now()+(AUTH_DAYS*86400000);
+    try{
+      localStorage.setItem(AUTH_TOKEN_KEY,token);
+      localStorage.setItem(AUTH_EXPIRY_KEY,String(expiry));
+      await setSetting('auth_device_token',token);
+    }catch(e){}
+  }
+  document.getElementById('authScreen').style.display='none';
+  await bootApp();
+}
+
+async function logOut(){
+  if(!confirm('Log out of this device?'))return;
+  try{localStorage.removeItem(AUTH_TOKEN_KEY);localStorage.removeItem(AUTH_EXPIRY_KEY);}catch(e){}
+  location.reload();
+}
+
+async function changePassword(newPass){
+  const hash=await hashPassword(newPass);
+  await setSetting('auth_password_hash',hash);
+  // Invalidate all device tokens
+  await setSetting('auth_device_token','');
+  try{localStorage.removeItem(AUTH_TOKEN_KEY);}catch(e){}
+  toast('Password updated. You will need to log in again on other devices.','t-success');
+}
+
+
+// ══════════════════════════════════════════════════════
+// TV MODAL
+// ══════════════════════════════════════════════════════
+function openTVModal(ticker,setupData){
+  const modal=document.getElementById('tvModal');
+  const frame=document.getElementById('tvFrame');
+  const title=document.getElementById('tvModalTicker');
+  const btns=document.getElementById('tvModalBtns');
+  modal.classList.remove('hidden');
+  document.body.style.overflow='hidden';
+  title.textContent=ticker+' — TradingView';
+  // TradingView embed URL
+  const tvUrl='https://s.tradingview.com/widgetembed/?frameElementId=tvFrame&symbol='+encodeURIComponent(ticker)+'&interval=D&hidesidetoolbar=0&symboledit=1&saveimage=0&toolbarbg=1e1e2e&studies=RSI%40tv-basicstudies%2CMACD%40tv-basicstudies&theme=dark&style=1&timezone=exchange&withdateranges=1&showpopupbutton=1&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D&locale=en';
+  frame.src=tvUrl;
+  // Setup action buttons if trade setup provided
+  btns.innerHTML='';
+  if(setupData){
+    const ab=document.createElement('button');
+    ab.textContent='🔔 Set Alert $'+setupData.entry.toFixed(2);
+    ab.style.cssText='padding:6px 12px;border-radius:8px;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.1);color:#22c55e;font-size:12px;font-weight:700;cursor:pointer';
+    ab.onclick=function(){setQuickTradeAlert(setupData);};
+    btns.appendChild(ab);
+    const wb=document.createElement('button');
+    wb.textContent='+ Watchlist';
+    wb.style.cssText='padding:6px 12px;border-radius:8px;border:1px solid rgba(124,111,255,.4);background:rgba(124,111,255,.1);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer';
+    wb.onclick=function(){addQuickTradeToWatchlist(setupData);};
+    btns.appendChild(wb);
+  }
+}
+function closeTVModal(){
+  document.getElementById('tvModal').classList.add('hidden');
+  document.getElementById('tvFrame').src='';
+  document.body.style.overflow='';
+}
+function switchChartView(view){
+  // Just used for visual active state — TV opens in separate modal
+}
+
+// ══════════════════════════════════════════════════════
+// CHARTS PAGE
+// ══════════════════════════════════════════════════════
+function renderChartsPage(){
+  const myTickers=[...new Set([...positions.map(p=>p.ticker),...watchlist.map(w=>w.ticker)])];
+  document.getElementById('content').innerHTML=`
+    <div style="margin-bottom:1.25rem">
+      <div style="font-size:16px;font-weight:700;margin-bottom:.75rem">📈 Charts</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem">
+        <input type="text" id="chartSearchIn" placeholder="Enter any ticker (AAPL, BTC, SPCE...)" style="flex:1;min-width:160px;padding:10px 14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:14px;outline:none;font-family:inherit" onkeydown="if(event.key==='Enter')openChartFor(this.value)"/>
+        <button class="btn primary" onclick="openChartFor(document.getElementById('chartSearchIn').value)">Open Chart</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:1rem">Quick access — your stocks:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1.5rem">
+        ${myTickers.slice(0,12).map(t=>`<button onclick="openChartFor('${t}')" style="padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">${esc(t)}</button>`).join('')}
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:14px;overflow:hidden;height:calc(100vh - 280px);min-height:400px">
+        <iframe id="mainChartFrame" style="width:100%;height:100%;border:none" src="https://s.tradingview.com/widgetembed/?frameElementId=mainChartFrame&symbol=SPY&interval=D&hidesidetoolbar=0&symboledit=1&saveimage=0&toolbarbg=1e1e2e&studies=RSI%40tv-basicstudies%2CMACD%40tv-basicstudies&theme=dark&style=1&timezone=exchange&withdateranges=1&showpopupbutton=1&locale=en"></iframe>
+      </div>
+    </div>`;
+}
+function openChartFor(ticker){
+  const t=(ticker||'').trim().toUpperCase();
+  if(!t)return;
+  const frame=document.getElementById('mainChartFrame');
+  if(frame){
+    const url='https://s.tradingview.com/widgetembed/?frameElementId=mainChartFrame&symbol='+encodeURIComponent(t)+'&interval=D&hidesidetoolbar=0&symboledit=1&saveimage=0&toolbarbg=1e1e2e&studies=RSI%40tv-basicstudies%2CMACD%40tv-basicstudies&theme=dark&style=1&timezone=exchange&withdateranges=1&showpopupbutton=1&locale=en';
+    frame.src=url;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// QUICK TRADES PAGE
+// ══════════════════════════════════════════════════════
+function renderQuickTrades(){
+  const allStocks=[
+    ...positions.map(p=>({...p,_src:'owned'})),
+    ...watchlist.map(w=>({...w,_src:'watch'}))
+  ];
+
+  // Market movers to also scan
+  const MARKET_SCAN=['NVDA','AMD','TSLA','MSTR','COIN','SPCE','PLTR','RIVN','SOFI','BBAI','SOUN','IONQ'];
+  const watchedT=new Set(allStocks.map(s=>s.ticker));
+  const marketExtra=MARKET_SCAN.filter(t=>!watchedT.has(t)).map(t=>({ticker:t,_src:'market'}));
+  const toScan=[...allStocks,...marketExtra];
+
+  // Generate setups
+  const setups=[];
+  toScan.forEach(item=>{
+    const t=item.ticker;
+    const c=priceCache[t]?.current||0;
+    const dc=priceCache[t]?.dayChange||0;
+    const sup=parseFloat(item.support)||0;
+    const res=parseFloat(item.resistance)||0;
+    const sl=parseFloat(item.stopLoss)||0;
+    const avg=parseFloat(item.avgBuy)||0;
+    if(!c)return;
+
+    // Support bounce setup
+    if(sup&&Math.abs(c-sup)/sup<0.03&&dc>=-1){
+      const entry=sup*1.005;
+      const stop=sup*0.975;
+      const target=res&&res>c?res:c*1.04;
+      const rr=(target-entry)/(entry-stop);
+      if(rr>=1.5)setups.push({ticker:t,type:'Support Bounce',icon:'🛡️',color:'#3b82f6',timeframe:'Swing 2–5 days',entry,stop,target,rr,confidence:Math.round(65+(dc>0?10:0)),reason:`Price at support $${sup.toFixed(2)} — bounce entry`,src:item._src,item});
+    }
+    // Pullback in uptrend
+    if(dc>=-3&&dc<=-1&&item.trend==='Uptrend'){
+      const entry=c;const stop=c*0.975;const target=c*1.04;const rr=(target-entry)/(entry-stop);
+      if(rr>=1.5)setups.push({ticker:t,type:'Pullback Entry',icon:'📉',color:'#22c55e',timeframe:'Daily–Swing',entry,stop,target,rr,confidence:Math.round(60+(parseInt(item.momentum)||5)*3),reason:`Pulling back ${dc.toFixed(1)}% in uptrend — dip buy setup`,src:item._src,item});
+    }
+    // Momentum breakout
+    if(dc>=2&&res&&c>res*0.98){
+      const entry=c;const stop=res*0.985;const target=c*(1+Math.abs(dc/100)*2);const rr=(target-entry)/(entry-stop);
+      if(rr>=1.5)setups.push({ticker:t,type:'Momentum Breakout',icon:'⚡',color:'#22c55e',timeframe:'Daily',entry,stop,target,rr,confidence:Math.round(55+(dc*3)),reason:`Breaking resistance $${res.toFixed(2)} with +${dc.toFixed(1)}%`,src:item._src,item});
+    }
+    // Big move — wait for pullback
+    if(dc>=5){
+      const entry=c*0.97;const stop=c*0.955;const target=c*1.03;const rr=(target-entry)/(entry-stop);
+      setups.push({ticker:t,type:'Wait for Pullback',icon:'⏳',color:'#f59e0b',timeframe:'Daily',entry,stop,target,rr:Math.max(rr,1.5),confidence:Math.round(45+(dc*2)),reason:`Up ${dc.toFixed(1)}% today — wait for retest of $${entry.toFixed(2)}`,src:item._src,item});
+    }
+    // Near take profit — sell setup
+    if(item._src==='owned'&&avg&&c>=avg*(1.03)){
+      const pct=((c-avg)/avg*100);
+      if(pct>=3)setups.push({ticker:t,type:'SELL — Take Profits',icon:'💰',color:'#ef4444',timeframe:'Now',entry:c,stop:null,target:null,rr:null,isSell:true,confidence:Math.min(95,Math.round(60+pct*3)),reason:`Up ${pct.toFixed(1)}% from avg — consider trimming`,src:item._src,item});
+    }
+  });
+
+  setups.sort((a,b)=>b.confidence-a.confidence);
+
+  document.getElementById('content').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:8px">
+      <div>
+        <div style="font-size:16px;font-weight:700;margin-bottom:2px">⚡ Quick Trades</div>
+        <div style="font-size:12px;color:var(--text3)">3–5% swing setups · Ranked by confidence · Tap any to open full analysis</div>
+      </div>
+      <button class="btn primary sm" onclick="refreshPrices().then(renderQuickTrades)">⟳ Refresh</button>
+    </div>
+    ${!setups.length?`<div class="no-data"><div class="ndi">⚡</div><p>No setups found right now. Add support/resistance to your positions and refresh prices for better signals.</p></div>`:''}
+    <div id="qtList">
+      ${setups.slice(0,15).map((s,i)=>renderQTCard(s,i)).join('')}
+    </div>`;
+}
+
+function renderQTCard(s,i){
+  const srcColor=s.src==='owned'?'b-purple':s.src==='watch'?'b-gray':'b-cyan';
+  const srcLabel=s.src==='owned'?'Owned':s.src==='watch'?'Watchlist':'Market';
+  const confColor=s.confidence>=75?'var(--green)':s.confidence>=55?'var(--yellow)':'var(--red)';
+  return`<div class="qt-card" onclick="openQTSetup(${i})" style="border-left:3px solid ${s.color}">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:20px">${s.icon}</span>
+        <div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px">
+            <span style="font-weight:800;font-size:16px">${esc(s.ticker)}</span>
+            <span style="background:${s.color}22;color:${s.color};border:1px solid ${s.color}44;padding:1px 8px;border-radius:20px;font-size:11px;font-weight:700">${s.type}</span>
+            <span class="badge ${srcColor}" style="font-size:10px">${srcLabel}</span>
+          </div>
+          <div style="font-size:12px;color:var(--text3)">${s.timeframe} · ${esc(s.reason)}</div>
+        </div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase">Confidence</div>
+        <div style="font-size:20px;font-weight:800;color:${confColor}">${s.confidence}%</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(${s.isSell?'2':'4'},1fr);gap:.5rem">
+      <div style="background:var(--bg3);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">${s.isSell?'Sell at':'Entry'}</div>
+        <div style="font-weight:800;font-size:13px;color:${s.isSell?'var(--red)':'var(--green)'}">$${s.entry.toFixed(2)}</div>
+      </div>
+      ${!s.isSell?`<div style="background:var(--bg3);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">Stop</div>
+        <div style="font-weight:800;font-size:13px;color:var(--red)">$${s.stop.toFixed(2)}</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">Target</div>
+        <div style="font-weight:800;font-size:13px;color:var(--green)">$${s.target.toFixed(2)}</div>
+      </div>
+      <div style="background:var(--bg3);border-radius:8px;padding:8px;text-align:center">
+        <div style="font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;margin-bottom:2px">R/R</div>
+        <div style="font-weight:800;font-size:13px;color:var(--accent2)">${s.rr?s.rr.toFixed(1)+'x':'—'}</div>
+      </div>`:''}
+      ${s.isSell?`<div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px;text-align:center;cursor:pointer" onclick="event.stopPropagation();openSellModal('${esc(s.ticker)}')">
+        <div style="font-size:10px;color:var(--red);font-weight:700;text-transform:uppercase;margin-bottom:2px">Action</div>
+        <div style="font-weight:800;font-size:12px;color:var(--red)">Sell Now →</div>
+      </div>`:''}
+    </div>
+  </div>`;
+}
+
+let qtSetups=[];
+function openQTSetup(idx){
+  // Store setups for reference
+  const allStocks=[...positions.map(p=>({...p,_src:'owned'})),...watchlist.map(w=>({...w,_src:'watch'}))];
+  const MARKET_SCAN=['NVDA','AMD','TSLA','MSTR','COIN','SPCE','PLTR','RIVN','SOFI','BBAI','SOUN','IONQ'];
+  const watchedT=new Set(allStocks.map(s=>s.ticker));
+  const marketExtra=MARKET_SCAN.filter(t=>!watchedT.has(t)).map(t=>({ticker:t,_src:'market'}));
+  const toScan=[...allStocks,...marketExtra];
+  // Regenerate to get setup at idx
+  const setups=[];
+  toScan.forEach(item=>{
+    const t=item.ticker,c=priceCache[t]?.current||0,dc=priceCache[t]?.dayChange||0;
+    const sup=parseFloat(item.support)||0,res=parseFloat(item.resistance)||0;
+    const avg=parseFloat(item.avgBuy)||0;
+    if(!c)return;
+    if(sup&&Math.abs(c-sup)/sup<0.03&&dc>=-1){const entry=sup*1.005,stop=sup*0.975,target=res&&res>c?res:c*1.04,rr=(target-entry)/(entry-stop);if(rr>=1.5)setups.push({ticker:t,type:'Support Bounce',icon:'🛡️',color:'#3b82f6',timeframe:'Swing 2–5 days',entry,stop,target,rr,confidence:Math.round(65+(dc>0?10:0)),reason:`Price at support $${sup.toFixed(2)} — bounce entry`,src:item._src,item});}
+    if(dc>=-3&&dc<=-1&&item.trend==='Uptrend'){const entry=c,stop=c*0.975,target=c*1.04,rr=(target-entry)/(entry-stop);if(rr>=1.5)setups.push({ticker:t,type:'Pullback Entry',icon:'📉',color:'#22c55e',timeframe:'Daily–Swing',entry,stop,target,rr,confidence:Math.round(60+(parseInt(item.momentum)||5)*3),reason:`Pulling back ${dc.toFixed(1)}% in uptrend`,src:item._src,item});}
+    if(dc>=2&&res&&c>res*0.98){const entry=c,stop=res*0.985,target=c*(1+Math.abs(dc/100)*2),rr=(target-entry)/(entry-stop);if(rr>=1.5)setups.push({ticker:t,type:'Momentum Breakout',icon:'⚡',color:'#22c55e',timeframe:'Daily',entry,stop,target,rr,confidence:Math.round(55+(dc*3)),reason:`Breaking resistance $${res.toFixed(2)} with +${dc.toFixed(1)}%`,src:item._src,item});}
+    if(dc>=5){const entry=c*0.97,stop=c*0.955,target=c*1.03,rr=(target-entry)/(entry-stop);setups.push({ticker:t,type:'Wait for Pullback',icon:'⏳',color:'#f59e0b',timeframe:'Daily',entry,stop,target,rr:Math.max(rr,1.5),confidence:Math.round(45+(dc*2)),reason:`Up ${dc.toFixed(1)}% today — wait for retest`,src:item._src,item});}
+    if(item._src==='owned'&&avg&&c>=avg*1.03){const pct=((c-avg)/avg*100);if(pct>=3)setups.push({ticker:t,type:'SELL — Take Profits',icon:'💰',color:'#ef4444',timeframe:'Now',entry:c,stop:null,target:null,rr:null,isSell:true,confidence:Math.min(95,Math.round(60+pct*3)),reason:`Up ${pct.toFixed(1)}% from avg`,src:item._src,item});}
+  });
+  setups.sort((a,b)=>b.confidence-a.confidence);
+  const s=setups[idx];
+  if(!s)return;
+  if(s.isSell){openSellModal(s.ticker);return;}
+  openTVModal(s.ticker,s);
+}
+
+function setQuickTradeAlert(setup){
+  const key=setup.ticker+'_qt_entry';
+  triggerAlerts[key]={ticker:setup.ticker,price:setup.entry,direction:'buy',label:'QT Entry: '+setup.type,lastFired:null};
+  if(setup.stop){triggerAlerts[setup.ticker+'_qt_stop']={ticker:setup.ticker,price:setup.stop,direction:'sell',label:'QT Stop Loss',lastFired:null};}
+  if(setup.target){triggerAlerts[setup.ticker+'_qt_target']={ticker:setup.ticker,price:setup.target,direction:'sell',label:'QT Target: '+setup.target.toFixed(2),lastFired:null};}
+  toast('🔔 Alerts set for '+setup.ticker+' — entry $'+setup.entry.toFixed(2)+', stop $'+(setup.stop||0).toFixed(2)+', target $'+(setup.target||0).toFixed(2),'t-success');
+  requestNotifPermission();
+}
+
+async function addQuickTradeToWatchlist(setup){
+  const exists=watchlist.find(w=>w.ticker===setup.ticker)||positions.find(p=>p.ticker===setup.ticker);
+  if(exists){toast(setup.ticker+' already in portfolio/watchlist','');return;}
+  const w={ticker:setup.ticker,company:setup.ticker,targetBuy:setup.entry.toFixed(2),stopLoss:setup.stop?setup.stop.toFixed(2):'',takeProfit:setup.target?setup.target.toFixed(2):'',created_at:new Date().toISOString()};
+  try{const saved=await saveWatch(w);watchlist.push(saved);toast('✓ '+setup.ticker+' added to watchlist with entry/stop/target','t-success');}catch(e){toast('Error adding to watchlist','t-error');}
+}
+
+// ══════════════════════════════════════════════════════
+// SELL MODAL SYSTEM
+// ══════════════════════════════════════════════════════
+let sellModalState={posIdx:-1,ticker:'',shares:0,avgBuy:0,pct:100};
+const SUPABASE_TRADE_HISTORY=SUPABASE_URL+'/rest/v1/trade_history';
+
+function openSellModal(ticker){
+  const pos=positions.find(p=>p.ticker===ticker);
+  if(!pos){toast('Position not found','t-error');return;}
+  const idx=positions.indexOf(pos);
+  const c=priceCache[ticker]?.current||parseFloat(pos.avgBuy)||0;
+  const shares=parseFloat(pos.shares)||0;
+  sellModalState={posIdx:idx,ticker,shares,avgBuy:parseFloat(pos.avgBuy)||0,pct:100,price:c};
+  document.getElementById('sellModalTicker').textContent=ticker+' — Sell Position';
+  document.getElementById('sellModalMeta').textContent=shares+' shares · Avg buy $'+sellModalState.avgBuy.toFixed(2)+' · Current $'+c.toFixed(2);
+  renderSellModalBody();
+  document.getElementById('sellModalOverlay').style.display='flex';
+}
+
+function renderSellModalBody(){
+  const s=sellModalState;
+  const sharesToSell=(s.shares*(s.pct/100));
+  const proceeds=sharesToSell*(s.price||0);
+  const cost=sharesToSell*s.avgBuy;
+  const pl=proceeds-cost;
+  const plPct=cost?pl/cost*100:0;
+  const el=document.getElementById('sellModalBody');
+  el.innerHTML=`
+    <div style="margin-bottom:1rem">
+      <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem">How much to sell?</div>
+      <div class="sell-pct-row">
+        ${[25,50,75,100].map(p=>`<div class="sell-pct-btn${s.pct===p?' active':''}" onclick="setSellPct(${p})">${p===100?'Full Exit':p+'%'}</div>`).join('')}
+      </div>
+    </div>
+    <div style="margin-bottom:1rem">
+      <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem">Sell price</div>
+      <input type="number" step="0.01" id="sellPriceIn" value="${(s.price||0).toFixed(2)}" oninput="sellModalState.price=parseFloat(this.value)||0;updateSellCalc()" style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:16px;outline:none;box-sizing:border-box;font-family:inherit"/>
+    </div>
+    <div style="background:var(--bg3);border-radius:10px;padding:1rem;margin-bottom:1rem" id="sellCalc">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+        <div><div style="font-size:11px;color:var(--text3)">Shares selling</div><div style="font-weight:700">${sharesToSell.toFixed(4)}</div></div>
+        <div><div style="font-size:11px;color:var(--text3)">Proceeds</div><div style="font-weight:700">$${fmt(proceeds)}</div></div>
+        <div><div style="font-size:11px;color:var(--text3)">P/L $</div><div style="font-weight:700;color:${pl>=0?'var(--green)':'var(--red)'}">${pl>=0?'+':''}$${fmt(pl)}</div></div>
+        <div><div style="font-size:11px;color:var(--text3)">P/L %</div><div style="font-weight:700;color:${plPct>=0?'var(--green)':'var(--red)'}">${plPct>=0?'+':''}${plPct.toFixed(2)}%</div></div>
+      </div>
+    </div>
+    <div style="margin-bottom:1.25rem">
+      <div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem">Reason (optional)</div>
+      <input type="text" id="sellReasonIn" placeholder="e.g. Hit target, stop loss, taking profits..." style="width:100%;padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;outline:none;box-sizing:border-box;font-family:inherit"/>
+    </div>
+    <button onclick="confirmSell()" style="width:100%;padding:14px;border-radius:12px;background:var(--red);color:#fff;border:none;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">
+      ${s.pct===100?'Exit Full Position':'Sell '+s.pct+'% of Position'}
+    </button>
+    <div style="text-align:center;font-size:11px;color:var(--text3);margin-top:.75rem">This logs the trade to your history and updates your position</div>`;
+}
+
+function setSellPct(pct){sellModalState.pct=pct;renderSellModalBody();}
+function updateSellCalc(){renderSellModalBody();}
+
+async function confirmSell(){
+  const s=sellModalState;
+  if(s.posIdx<0)return;
+  const pos=positions[s.posIdx];
+  const sharesToSell=s.shares*(s.pct/100);
+  const sellPrice=s.price||priceCache[s.ticker]?.current||s.avgBuy;
+  const proceeds=sharesToSell*sellPrice;
+  const cost=sharesToSell*s.avgBuy;
+  const pl=proceeds-cost;
+  const plPct=cost?pl/cost*100:0;
+  const reason=(document.getElementById('sellReasonIn')?.value||'').trim();
+
+  try{
+    // Log to trade_history
+    await fetch(SUPABASE_TRADE_HISTORY,{method:'POST',headers:{...H,'Prefer':'return=minimal'},
+      body:JSON.stringify({ticker:s.ticker,shares_sold:sharesToSell,sell_price:sellPrice,avg_buy_price:s.avgBuy,pl_dollars:pl,pl_pct:plPct,reason:reason||null})});
+
+    // Update position
+    if(s.pct===100){
+      // Full exit — delete position
+      await fetch(SUPABASE_URL+'/rest/v1/positions?id=eq.'+pos.id,{method:'DELETE',headers:H});
+      positions.splice(s.posIdx,1);
+      toast('✓ Position closed — P/L: '+(pl>=0?'+':'')+'$'+fmt(pl),'t-success');
+    } else {
+      // Partial sell — update shares
+      const newShares=s.shares-sharesToSell;
+      const updated={...pos,shares:newShares.toFixed(6)};
+      await fetch(SUPABASE_URL+'/rest/v1/positions?id=eq.'+pos.id,{method:'PATCH',headers:{...H,'Prefer':'return=representation'},body:JSON.stringify({shares:newShares.toFixed(6)})});
+      positions[s.posIdx]={...pos,shares:newShares.toFixed(6)};
+      toast('✓ Sold '+s.pct+'% of '+s.ticker+' — P/L: '+(pl>=0?'+':'')+'$'+fmt(pl),'t-success');
+    }
+    closeSellModal();
+    if(page==='portfolio')renderPortfolio();
+    if(page==='dashboard')go('dashboard');
+  }catch(e){toast('Error processing sell: '+e.message,'t-error');}
+}
+
+function closeSellModal(){document.getElementById('sellModalOverlay').style.display='none';}
+
+// Sell notification checker (runs every 60s)
+function checkSellAlerts(){
+  if(!positions.length)return;
+  const today=new Date().toDateString();
+  positions.forEach(pos=>{
+    const t=pos.ticker;
+    const c=priceCache[t]?.current||0;
+    if(!c)return;
+    const tp=parseFloat((pos.takeProfit||'').split('/')[0])||0;
+    const sl=parseFloat(pos.stopLoss)||0;
+    // TP alert
+    if(tp&&c>=tp*0.97){
+      const key='sell_tp_'+t+'_'+today;
+      if(!notifiedSignals[key]){
+        notifiedSignals[key]=true;
+        addNotif('💰 Take Profit: '+t,'Price $'+c.toFixed(2)+' is near your target $'+tp.toFixed(2)+' — consider trimming','alert',t);
+        if('Notification' in window&&Notification.permission==='granted')new Notification('💰 Take Profit: '+t,{body:'Price near target $'+tp.toFixed(2)+' — consider selling',tag:'tp_'+t});
+      }
+    }
+    // Stop loss alert
+    if(sl&&c<=sl*1.02){
+      const key='sell_sl_'+t+'_'+today;
+      if(!notifiedSignals[key]){
+        notifiedSignals[key]=true;
+        addNotif('🚨 Stop Loss: '+t,'Price $'+c.toFixed(2)+' near/below stop $'+sl.toFixed(2)+' — EXIT NOW','alert',t);
+        if('Notification' in window&&Notification.permission==='granted')new Notification('🚨 STOP LOSS: '+t,{body:'Price $'+c.toFixed(2)+' — exit now!',tag:'sl_'+t});
+      }
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════
+// PASSWORD CHANGE HANDLER
+// ══════════════════════════════════════════════════════
+async function handleChangePassword(){
+  const p=(document.getElementById('newPassIn')?.value||'').trim();
+  const c=(document.getElementById('newPassConfirm')?.value||'').trim();
+  if(!p||p.length<4){toast('Password must be at least 4 characters','t-error');return;}
+  if(p!==c){toast('Passwords do not match','t-error');return;}
+  await changePassword(p);
+}
+
+
+
+function toggleMobMore(){
+  const d=document.getElementById('mobMoreDrawer');
+  if(d)d.style.display=d.style.display==='none'?'block':'none';
+}
+function closeMobMore(){
+  const d=document.getElementById('mobMoreDrawer');
+  if(d)d.style.display='none';
+}
+
+// ══════════════════════════════════════════════════════
+// TRADE INTELLIGENCE ENGINE
+// ══════════════════════════════════════════════════════
+let tiTab='scanner'; // settings|universe|regime|newslog|scanner|tradelog
+let tiSettings={
+  capital:3500,maxRiskPct:0.0175,target1Pct:0.025,target2Pct:0.04,
+  hardStopPct:0.0175,maxHoldDays:5,noChaseAbovePct:0.01,minRR:1.5,
+  minPrice:5,maxPrice:25,minAvgDolVol:10000000,minAvgShareVol:1500000,
+  maxSpreadPct:0.005,minRelVol:1.2,avoidEarningsDays:3,
+  wTradability:15,wCatalyst:20,wRegime:15,wTrend:15,wEntry:15,wRR:10,wEvent:10,
+  buyThreshold:80,watchThreshold:65
+};
+let tiUniverse=[
+  {ticker:'ASST',company:'Strive Asset Mgmt',sector:'Finance',theme:'BTC Treasury',linkage:'BTC',notes:'Reacts to BTC + treasury updates'},
+  {ticker:'BBAI',company:'BigBear.ai',sector:'AI/Defense',theme:'AI Momentum',linkage:'',notes:'Headline-sensitive'},
+  {ticker:'SOUN',company:'SoundHound AI',sector:'AI',theme:'AI Momentum',linkage:'',notes:'High beta AI play'},
+  {ticker:'HOOD',company:'Robinhood',sector:'Finance',theme:'Retail Trading',linkage:'',notes:'Reacts to market volumes'},
+  {ticker:'COIN',company:'Coinbase',sector:'Crypto',theme:'BTC Beta',linkage:'BTC',notes:'Reacts to BTC + crypto flows'}
+];
+let tiNewsLog=[];
+let tiTradeLog=[];
+let tiRegimeData={};
+let tiScanResults=[];
+let tiScanTimer=null;
+let tiExpandedTicker=null;
+
+// Merge universe with existing positions/watchlist
+function getTIUniverse(){
+  const existing=new Set(tiUniverse.map(u=>u.ticker));
+  const extra=[
+    ...positions.filter(p=>!existing.has(p.ticker)).map(p=>({ticker:p.ticker,company:p.company||p.ticker,sector:p.sector||'',theme:'Portfolio',linkage:'',notes:'From portfolio'})),
+    ...watchlist.filter(w=>!existing.has(w.ticker)).map(w=>({ticker:w.ticker,company:w.company||w.ticker,sector:w.sector||'',theme:'Watchlist',linkage:'',notes:'From watchlist'}))
+  ];
+  return[...tiUniverse,...extra];
+}
+
+// ── FETCH CANDLES & CALCULATE MAs ──
+async function fetchTIStockData(ticker){
+  if(!apiKey)return null;
+  try{
+    const to=Math.floor(Date.now()/1000);
+    const from=Math.floor((Date.now()-60*86400000)/1000); // 60 days for 20DMA
+    const [quoteR,candleR,earningsR]=await Promise.all([
+      fetch('https://finnhub.io/api/v1/quote?symbol='+encodeURIComponent(ticker)+'&token='+apiKey),
+      fetch('https://finnhub.io/api/v1/stock/candle?symbol='+encodeURIComponent(ticker)+'&resolution=D&from='+from+'&to='+to+'&token='+apiKey),
+      fetch('https://finnhub.io/api/v1/calendar/earnings?symbol='+encodeURIComponent(ticker)+'&token='+apiKey)
+    ]);
+    const quote=await quoteR.json();
+    const candles=await candleR.json();
+    const earningsData=await earningsR.json();
+
+    if(!quote||!quote.c||quote.c<=0)return null;
+
+    const closes=candles.s==='ok'?candles.c:[];
+    const highs=candles.s==='ok'?candles.h:[];
+    const lows=candles.s==='ok'?candles.l:[];
+    const volumes=candles.s==='ok'?candles.v:[];
+
+    // Calculate MAs
+    const sma=(arr,n)=>arr.length>=n?arr.slice(-n).reduce((a,b)=>a+b,0)/n:null;
+    const ma5=sma(closes,5),ma10=sma(closes,10),ma20=sma(closes,20);
+
+    // ATR
+    let atr=null;
+    if(closes.length>=14&&highs.length>=14&&lows.length>=14){
+      const trs=[];
+      for(let i=1;i<Math.min(15,closes.length);i++){
+        trs.push(Math.max(highs[i]-lows[i],Math.abs(highs[i]-closes[i-1]),Math.abs(lows[i]-closes[i-1])));
+      }
+      atr=trs.reduce((a,b)=>a+b,0)/trs.length;
+    }
+
+    // Average volume
+    const avgVol=volumes.length>=20?volumes.slice(-20).reduce((a,b)=>a+b,0)/20:null;
+    const todayVol=volumes.length?volumes[volumes.length-1]:null;
+    const relVol=avgVol&&todayVol?todayVol/avgVol:null;
+
+    // Returns
+    const ret5d=closes.length>=6?(closes[closes.length-1]/closes[closes.length-6]-1):null;
+    const ret20d=closes.length>=21?(closes[closes.length-1]/closes[closes.length-21]-1):null;
+
+    // Earnings risk check
+    const earningsArr=earningsData?.earningsCalendar||[];
+    const nextEarnings=earningsArr.find(e=>e.symbol===ticker&&e.date);
+    let earningsRisk=false;
+    if(nextEarnings?.date){
+      const daysToEarnings=Math.ceil((new Date(nextEarnings.date)-new Date())/(86400000));
+      if(daysToEarnings>=0&&daysToEarnings<=tiSettings.avoidEarningsDays)earningsRisk=true;
+    }
+
+    return{
+      ticker,price:quote.c,prevClose:quote.pc,open:quote.o,high:quote.h,low:quote.l,
+      dayChange:quote.dp,ma5,ma10,ma20,atr,atrPct:atr?atr/quote.c:null,
+      avgVol,todayVol,relVol,ret5d,ret20d,earningsRisk,
+      distFrom10ma:ma10?(quote.c-ma10)/ma10:null,
+      distFrom20ma:ma20?(quote.c-ma20)/ma20:null,
+      distFromHigh:quote.h?(quote.c-quote.h)/quote.h:null,
+      distFromLow:quote.l&&quote.l>0?(quote.c-quote.l)/quote.l:null,
+      gapPct:quote.pc?(quote.o-quote.pc)/quote.pc:null
+    };
+  }catch(e){console.log('TI fetch error',ticker,e);return null;}
+}
+
+// ── SEC EDGAR DILUTION CHECK ──
+async function checkSECFiling(ticker){
+  try{
+    const r=await fetch('https://efts.sec.gov/LATEST/search-index?q=%22'+encodeURIComponent(ticker)+'%22&dateRange=custom&startdt='+new Date(Date.now()-30*86400000).toISOString().slice(0,10)+'&enddt='+new Date().toISOString().slice(0,10)+'&forms=S-3,424B3,S-1');
+    const d=await r.json();
+    return(d.hits?.hits?.length||0)>0;
+  }catch(e){return false;}
+}
+
+// ── REGIME FETCH ──
+async function fetchRegimeData(){
+  if(!apiKey)return;
+  const symbols=['SPY','QQQ','IWM','BINANCE:BTCUSDT'];
+  const results={};
+  await Promise.all(symbols.map(async sym=>{
+    try{
+      const r=await fetch('https://finnhub.io/api/v1/quote?symbol='+encodeURIComponent(sym)+'&token='+apiKey);
+      const d=await r.json();
+      if(d&&d.c>0){
+        const to=Math.floor(Date.now()/1000);
+        const from=Math.floor((Date.now()-30*86400000)/1000);
+        const cr=await fetch('https://finnhub.io/api/v1/stock/candle?symbol='+encodeURIComponent(sym==='BINANCE:BTCUSDT'?sym:sym)+'&resolution=D&from='+from+'&to='+to+'&token='+apiKey);
+        const cd=await cr.json();
+        const closes=cd.s==='ok'?cd.c:[];
+        const sma=(arr,n)=>arr.length>=n?arr.slice(-n).reduce((a,b)=>a+b,0)/n:null;
+        const ma10=sma(closes,10),ma20=sma(closes,20);
+        const ret5d=closes.length>=6?(closes[closes.length-1]/closes[closes.length-6]-1):null;
+        const ret20d=closes.length>=21?(closes[closes.length-1]/closes[closes.length-21]-1):null;
+        // Trend score
+        let ts=0;
+        if(ma10&&d.c>ma10)ts+=3;
+        if(ma20&&d.c>ma20)ts+=4;
+        if(ret5d>0)ts+=2;
+        if(ret20d>0)ts+=1;
+        const flag=ts>=7?'FAVORABLE':ts>=5?'MIXED':'RISK_OFF';
+        results[sym]={price:d.c,dc:d.dp,ma10,ma20,ret5d,ret20d,trendScore:ts,flag};
+      }
+    }catch(e){}
+  }));
+  // VIX
+  try{
+    const vr=await fetch('https://finnhub.io/api/v1/quote?symbol=^VIX&token='+apiKey);
+    const vd=await vr.json();
+    if(vd&&vd.c>0)results['VIX']={price:vd.c,dc:vd.dp};
+  }catch(e){}
+  tiRegimeData=results;
+  return results;
+}
+
+function getMasterRegime(){
+  const spy=tiRegimeData['SPY']?.flag;
+  const qqq=tiRegimeData['QQQ']?.flag;
+  const vix=tiRegimeData['VIX']?.price||20;
+  if(spy==='FAVORABLE'&&qqq==='FAVORABLE'&&vix<25)return'GREEN';
+  if(spy==='RISK_OFF'&&qqq==='RISK_OFF')return'RED';
+  return'YELLOW';
+}
+
+function getBTCRegime(){
+  const btc=tiRegimeData['BINANCE:BTCUSDT'];
+  if(!btc)return'YELLOW';
+  if(btc.flag==='FAVORABLE')return'GREEN';
+  if(btc.flag==='RISK_OFF')return'RED';
+  return'YELLOW';
+}
+
+// ── SCORING ENGINE ──
+function scoreStock(data,universe,newsEntry){
+  const s=tiSettings;
+  const isBTC=universe.linkage==='BTC';
+  const master=getMasterRegime();
+  const btcR=getBTCRegime();
+
+  // ── TRADABILITY (0-15) ──
+  let tradability=15,tradPass=true;
+  if(data.price<s.minPrice||data.price>s.maxPrice){tradability=0;tradPass=false;}
+  else if(data.avgVol&&data.avgVol<s.minAvgShareVol){tradability=5;tradPass=false;}
+  else if(data.avgVol&&(data.price*data.avgVol)<s.minAvgDolVol){tradability=5;tradPass=false;}
+  else if(data.relVol&&data.relVol<s.minRelVol)tradability=10;
+
+  // ── CATALYST (0-20) ──
+  let catalyst=10; // default neutral
+  if(newsEntry){
+    const fresh=newsEntry.freshnessDays||0;
+    const base=((newsEntry.sentiment+2)*3)+(newsEntry.catalystStrength*3);
+    const freshAdj=fresh>5?-3:fresh>3?-2:fresh>1?-1:0;
+    catalyst=Math.min(20,Math.max(0,base+freshAdj));
+  }
+
+  // ── REGIME (0-15) ──
+  let regime=0;
+  if(isBTC){
+    regime=(master==='GREEN'?5:master==='YELLOW'?3:1)+(btcR==='GREEN'?7:btcR==='YELLOW'?4:1)+3;
+  } else {
+    regime=(master==='GREEN'?8:master==='YELLOW'?5:1)+4+3;
+  }
+  regime=Math.min(15,regime);
+
+  // ── TREND (0-15) ──
+  let trend=0;
+  if(data.ma10&&data.price>data.ma10)trend+=4;
+  if(data.ma20&&data.price>data.ma20)trend+=4;
+  if(data.ret5d>0)trend+=3;
+  if(data.ret20d>0)trend+=2;
+  if(data.distFrom10ma>=0&&data.distFrom10ma<=0.03)trend+=2;
+  trend=Math.min(15,trend);
+
+  // ── SETUP & ENTRY QUALITY (0-15) ──
+  let setupType='NO_DATA',entryQ=5;
+  if(data.distFrom10ma!==null){
+    const ext=data.distFrom10ma>0.05||(data.gapPct&&data.gapPct>0.04)||(data.relVol&&data.relVol>4&&data.dayChange>5);
+    if(ext){setupType='EXTENDED_NO_ENTRY';entryQ=3;}
+    else if(data.distFrom10ma>=0&&data.distFrom10ma<=0.02&&data.price>data.ma20&&trend>=8&&catalyst>=12&&data.relVol>=1.2){setupType='PULLBACK_TO_10DMA';entryQ=15;}
+    else if(data.distFrom10ma>0.02&&data.distFrom10ma<=0.04&&data.distFromHigh>=-0.015){setupType='BREAKOUT_RETEST';entryQ=13;}
+    else if(data.distFrom10ma>=-0.01&&data.distFrom10ma<0&&data.dayChange>0){setupType='VWAP_RECLAIM';entryQ=11;}
+    else if(data.distFromLow&&data.distFromLow<0.02&&data.dayChange>=0){setupType='OPEN_RANGE_RETEST';entryQ=10;}
+    else if(data.distFrom10ma<-0.03){setupType='FAILED_SETUP';entryQ=0;}
+    else{setupType='MIXED';entryQ=7;}
+  }
+
+  // ── LEVELS ──
+  const support=data.ma10||data.low||data.price*0.97;
+  const resistance=data.high||data.price*1.03;
+  const buyZoneLow=support*1.000;
+  const buyZoneHigh=support*1.010;
+  const noChaseAbove=buyZoneHigh*(1+s.noChaseAbovePct);
+  const stopLoss=buyZoneLow*(1-s.hardStopPct);
+  const entryAssumed=(buyZoneLow+buyZoneHigh)/2;
+  const t1=entryAssumed*(1+s.target1Pct);
+  const t2=entryAssumed*(1+s.target2Pct);
+  const riskPerShare=entryAssumed-stopLoss;
+  const rew1=t1-entryAssumed;
+  const rew2=t2-entryAssumed;
+  const rr1=riskPerShare>0?rew1/riskPerShare:0;
+  const rr2=riskPerShare>0?rew2/riskPerShare:0;
+
+  // ── RISK/REWARD (0-10) ──
+  const rrScore=rr1>=2?10:rr1>=1.75?8:rr1>=1.5?6:rr1>=1.25?4:1;
+
+  // ── EVENT RISK (0-10) ──
+  const dilution=newsEntry?.dilutionFlag||false;
+  const secRisk=newsEntry?.secFlag||false;
+  const earningsRisk=data.earningsRisk||false;
+  const eventRisk=Math.max(0,10-(dilution?4:0)-(secRisk?3:0)-(earningsRisk?3:0));
+
+  // ── COMPOSITE ──
+  const composite=tradability+catalyst+regime+trend+entryQ+rrScore+eventRisk;
+  const confidence=Math.round(composite/10*10)/10;
+
+  // ── HARD OVERRIDES ──
+  let action='AVOID',hardDisqualify=false;
+  if(!tradPass){action='AVOID';hardDisqualify=true;}
+  else if(dilution){action='AVOID';hardDisqualify=true;}
+  else if(earningsRisk){action='AVOID';hardDisqualify=true;}
+  else if(setupType==='EXTENDED_NO_ENTRY'){action='WAIT';}
+  else if(master==='RED'&&!isBTC){action='WAIT';}
+  else if(isBTC&&btcR==='RED'){action='WAIT';}
+  else if(composite>=s.buyThreshold){action='BUY';}
+  else if(composite>=s.watchThreshold){action='WAIT';}
+  else{action='AVOID';}
+
+  // ASST-specific rules
+  if(isBTC&&action==='BUY'){
+    if(catalyst<12||setupType==='EXTENDED_NO_ENTRY'||eventRisk<7||rr1<1.5)action='WAIT';
+  }
+
+  // ── RISK LABEL ──
+  let riskLabel='High Risk';
+  if(eventRisk>=8&&entryQ>=12&&regime>=11)riskLabel='Lower Risk';
+  else if(eventRisk>=6&&entryQ>=8&&regime>=8)riskLabel='Moderate Risk';
+
+  // ── SIZING ──
+  const capital=s.capital;
+  const shares=Math.floor(capital/entryAssumed);
+  const maxDollarRisk=shares*riskPerShare;
+  const profitT1=shares*rew1;
+  const profitT2=shares*rew2;
+
+  // ── REASONS ──
+  const r1=catalyst>=15?'Fresh positive catalyst driving momentum':catalyst>=10?'Moderate catalyst present':'Weak or stale catalyst — use caution';
+  const r2=entryQ>=12?'Low-chase entry zone — controlled risk':'Entry not clean enough — wait for setup';
+  const r3=eventRisk>=8?'Event risk acceptable — clean backdrop':'Headline/filing risk elevated — reduce size or wait';
+
+  return{
+    ticker:data.ticker,composite,confidence,action,riskLabel,setupType,hardDisqualify,
+    scores:{tradability,catalyst,regime,trend,entry:entryQ,rr:rrScore,event:eventRisk},
+    levels:{support,resistance,buyZoneLow,buyZoneHigh,noChaseAbove,stopLoss,entryAssumed,t1,t2,rr1,rr2},
+    sizing:{capital,shares,maxDollarRisk,profitT1,profitT2},
+    data,reasons:[r1,r2,r3],isBTC
+  };
+}
+
+// ── FULL SCAN ──
+async function runTIScan(){
+  const universe=getTIUniverse();
+  const results=[];
+  // Fetch regime first
+  await fetchRegimeData();
+  // Process each stock sequentially to stay within rate limits
+  for(const u of universe){
+    const data=await fetchTIStockData(u.ticker);
+    if(!data){results.push({ticker:u.ticker,error:true,universe:u});continue;}
+    // Check SEC in parallel for BTC-linked
+    let dilution=false;
+    if(u.linkage==='BTC')dilution=await checkSECFiling(u.ticker);
+    // Get news entry
+    const news=tiNewsLog.find(n=>n.ticker===u.ticker);
+    if(news&&dilution)news.dilutionFlag=true;
+    const score=scoreStock(data,u,news);
+    score.universe=u;
+    results.push(score);
+    await new Promise(r=>setTimeout(r,300)); // 300ms between calls to stay safe
+  }
+  tiScanResults=results.filter(r=>!r.error).sort((a,b)=>{
+    const ao=a.action==='BUY'?0:a.action==='WAIT'?1:2;
+    const bo=b.action==='BUY'?0:b.action==='WAIT'?1:2;
+    if(ao!==bo)return ao-bo;
+    return b.composite-a.composite;
+  });
+  return tiScanResults;
+}
+
+// ══════════════════════════════════════════════════════
+// TRADE INTELLIGENCE RENDER
+// ══════════════════════════════════════════════════════
+function renderTradeIntelligence(){
+  document.getElementById('content').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+      <div style="font-size:16px;font-weight:700">🧠 Trade Intelligence</div>
+      <div style="font-size:11px;color:var(--text3)">Spec-grade scoring · BUY/WAIT/AVOID · Position sizing</div>
+    </div>
+    <div class="ti-tabs">
+      ${[['scanner','🔬 Scanner'],['regime','📡 Market Regime'],['universe','🌍 Universe'],['newslog','📰 News Log'],['tradelog','📋 Trade Log'],['settings','⚙️ Settings']].map(([id,label])=>`<div class="ti-tab${tiTab===id?' active':''}" onclick="setTITab('${id}')">${label}</div>`).join('')}
+    </div>
+    <div id="tiContent"></div>`;
+  renderTITab();
+}
+
+function setTITab(tab){tiTab=tab;renderTradeIntelligence();}
+
+function renderTITab(){
+  const el=document.getElementById('tiContent');
+  if(!el)return;
+  if(tiTab==='scanner')renderTIScanner(el);
+  else if(tiTab==='regime')renderTIRegime(el);
+  else if(tiTab==='universe')renderTIUniverse(el);
+  else if(tiTab==='newslog')renderTINewsLog(el);
+  else if(tiTab==='tradelog')renderTITradeLog(el);
+  else if(tiTab==='settings')renderTISettings(el);
+}
+
+// ── SCANNER TAB ──
+function renderTIScanner(el){
+  const hasResults=tiScanResults.length>0;
+  const master=getMasterRegime();
+  const btcR=getBTCRegime();
+  el.innerHTML=`
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:1rem;flex-wrap:wrap">
+      <div style="display:flex;gap:6px;align-items:center">
+        <span class="regime-${master.toLowerCase()==='favorable'?'green':master.toLowerCase()==='mixed'?'yellow':'red'} regime-${master==='GREEN'?'green':master==='YELLOW'?'yellow':'red'}">${master==='GREEN'?'🟢':master==='YELLOW'?'🟡':'🔴'} Market: ${master}</span>
+        <span class="regime-${btcR==='GREEN'?'green':btcR==='YELLOW'?'yellow':'red'}">${btcR==='GREEN'?'₿🟢':btcR==='YELLOW'?'₿🟡':'₿🔴'} BTC: ${btcR}</span>
+      </div>
+      <button class="btn primary sm" id="tiScanBtn" onclick="startTIScan()" style="margin-left:auto">⚡ Run Scan</button>
+    </div>
+    ${!hasResults?`<div class="ti-section" style="text-align:center;padding:2rem"><div style="font-size:32px;margin-bottom:.75rem">🔬</div><div style="font-weight:600;margin-bottom:.5rem">Ready to scan</div><div class="muted" style="font-size:13px;margin-bottom:1rem">Fetches live prices, calculates MAs/ATR, checks SEC filings, scores every stock in your universe.</div><button class="btn primary" onclick="startTIScan()">⚡ Run full scan now</button></div>`:''}
+    <div id="tiScanList">
+      ${tiScanResults.map((r,i)=>renderTIStockCard(r,i)).join('')}
+    </div>
+    ${hasResults?`<div style="font-size:11px;color:var(--text3);text-align:center;margin-top:1rem">Sorted by: BUY first → Composite score → Tap any row to expand full breakdown</div>`:''}`;
+}
+
+function renderTIStockCard(r,i){
+  const actionClass=r.action==='BUY'?'action-buy':r.action==='WAIT'?'action-wait':'action-avoid';
+  const actionColor=r.action==='BUY'?'#22c55e':r.action==='WAIT'?'#f59e0b':'#ef4444';
+  const isExpanded=tiExpandedTicker===r.ticker;
+  const scorePct=r.composite||0;
+  return`<div class="ti-stock-card" style="border-left:3px solid ${actionColor}" onclick="expandTICard('${r.ticker}')">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+      <span style="font-weight:800;font-size:16px">${esc(r.ticker)}</span>
+      <span class="${actionClass}">${r.action}</span>
+      ${r.isBTC?'<span class="badge b-yellow" style="font-size:10px">₿ BTC-linked</span>':''}
+      <span class="risk-${r.riskLabel?.includes('Lower')?'lower':r.riskLabel?.includes('Moderate')?'moderate':'high'}" style="margin-left:auto">${r.riskLabel||'—'}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+          <span style="color:var(--text3);font-weight:700">Composite Score</span>
+          <span style="font-weight:800;color:${actionColor}">${scorePct}/100</span>
+        </div>
+        <div class="score-bar"><div class="score-bar-fill" style="width:${scorePct}%;background:${actionColor}"></div></div>
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <div style="font-size:10px;color:var(--text3)">Confidence</div>
+        <div style="font-weight:800;color:${actionColor}">${r.confidence}/10</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px">
+      <div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Price</div><div style="font-weight:700;font-size:13px">$${(r.data?.price||0).toFixed(2)}</div></div>
+      <div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Entry</div><div style="font-weight:700;font-size:13px;color:#22c55e">$${(r.levels?.entryAssumed||0).toFixed(2)}</div></div>
+      <div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Stop</div><div style="font-weight:700;font-size:13px;color:#ef4444">$${(r.levels?.stopLoss||0).toFixed(2)}</div></div>
+      <div style="background:var(--bg3);border-radius:7px;padding:7px;text-align:center"><div style="font-size:9px;color:var(--text3);font-weight:700;text-transform:uppercase">Target1</div><div style="font-weight:700;font-size:13px;color:#22c55e">$${(r.levels?.t1||0).toFixed(2)}</div></div>
+    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:4px">Setup: <strong style="color:var(--text)">${r.setupType||'—'}</strong> · R/R: <strong style="color:${actionColor}">${(r.levels?.rr1||0).toFixed(1)}x</strong> · ${r.isBTC?'BTC Regime: <strong>'+btcR+'</strong>':'Master: <strong>'+getMasterRegime()+'</strong>'}</div>
+    ${isExpanded?renderTICardExpanded(r):'<div style="font-size:11px;color:var(--accent2);margin-top:4px">▼ Tap to expand full breakdown</div>'}
+  </div>`;
+}
+
+function renderTICardExpanded(r){
+  const s=r.scores||{};
+  const l=r.levels||{};
+  const sz=r.sizing||{};
+  return`<div class="ti-expanded">
+    <!-- 7 score components -->
+    <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem">Score Breakdown</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:.75rem">
+      ${[['Tradability',s.tradability,15],['Catalyst',s.catalyst,20],['Regime',s.regime,15],['Trend',s.trend,15],['Entry Quality',s.entry,15],['Risk/Reward',s.rr,10],['Event Risk',s.event,10]].map(([n,v,mx])=>`<div style="background:var(--bg3);border-radius:7px;padding:8px"><div style="font-size:10px;color:var(--text3);font-weight:700;margin-bottom:3px">${n} <span style="float:right;color:var(--text)">${v||0}/${mx}</span></div><div class="score-bar"><div class="score-bar-fill" style="width:${((v||0)/mx)*100}%;background:${(v||0)/mx>=0.7?'var(--green)':(v||0)/mx>=0.4?'var(--yellow)':'var(--red)'}"></div></div></div>`).join('')}
+    </div>
+    <!-- Levels -->
+    <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem">Key Levels</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:.75rem">
+      ${[['Buy Zone Low','$'+(l.buyZoneLow||0).toFixed(2)],['Buy Zone High','$'+(l.buyZoneHigh||0).toFixed(2)],['Do Not Chase','$'+(l.noChaseAbove||0).toFixed(2)],['Stop Loss','$'+(l.stopLoss||0).toFixed(2)],['Target 1 (+2.5%)','$'+(l.t1||0).toFixed(2)],['Target 2 (+4%)','$'+(l.t2||0).toFixed(2)]].map(([n,v])=>`<div class="ti-row" style="padding:5px 0"><span style="font-size:12px;color:var(--text3)">${n}</span><span style="font-weight:700;font-size:12px">${v}</span></div>`).join('')}
+    </div>
+    <!-- Position sizing -->
+    <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem">Position Sizing ($${tiSettings.capital.toLocaleString()} capital)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:.75rem">
+      ${[['Shares',sz.shares||0],['Max $ Risk','$'+(sz.maxDollarRisk||0).toFixed(0)],['Profit at T1','+$'+(sz.profitT1||0).toFixed(0)],['Profit at T2','+$'+(sz.profitT2||0).toFixed(0)]].map(([n,v])=>`<div class="ti-row" style="padding:5px 0"><span style="font-size:12px;color:var(--text3)">${n}</span><span style="font-weight:700;font-size:13px">${v}</span></div>`).join('')}
+    </div>
+    <!-- Reasons -->
+    <div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem">Analysis</div>
+    ${(r.reasons||[]).map((reason,i)=>`<div style="padding:6px 10px;background:var(--bg3);border-radius:7px;margin-bottom:5px;font-size:12px;color:var(--text2)"><strong style="color:var(--text)">Reason ${i+1}:</strong> ${esc(reason)}</div>`).join('')}
+    <!-- Action buttons -->
+    <div style="display:flex;gap:8px;margin-top:.75rem;flex-wrap:wrap">
+      <button onclick="event.stopPropagation();setTIEntryAlert('${esc(r.ticker)}',${(l.entryAssumed||0).toFixed(2)})" style="flex:1;padding:9px;border-radius:9px;border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.08);color:#22c55e;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">🔔 Set Entry Alert</button>
+      <button onclick="event.stopPropagation();addToWatchlistFromTI('${esc(r.ticker)}',${(l.entryAssumed||0).toFixed(2)},${(l.stopLoss||0).toFixed(2)},${(l.t1||0).toFixed(2)})" style="flex:1;padding:9px;border-radius:9px;border:1px solid rgba(124,111,255,.4);background:rgba(124,111,255,.08);color:#a78bfa;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">+ Watchlist</button>
+      <button onclick="event.stopPropagation();openTVModal('${esc(r.ticker)}')" style="padding:9px 14px;border-radius:9px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📈 Chart</button>
+    </div>
+    <!-- Log Trade button -->
+    <div style="margin-top:8px">
+      <button onclick="event.stopPropagation();openTITradeEntry('${esc(r.ticker)}',${(l.entryAssumed||0).toFixed(2)},${(l.stopLoss||0).toFixed(2)},${(l.t1||0).toFixed(2)},${(l.t2||0).toFixed(2)},${r.composite||0})" style="width:100%;padding:9px;border-radius:9px;border:1px solid rgba(245,158,11,.4);background:rgba(245,158,11,.08);color:#f59e0b;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">📋 Log Trade Entry</button>
+    </div>
+  </div>`;
+}
+
+function expandTICard(ticker){
+  tiExpandedTicker=tiExpandedTicker===ticker?null:ticker;
+  const el=document.getElementById('tiScanList');
+  if(el)el.innerHTML=tiScanResults.map((r,i)=>renderTIStockCard(r,i)).join('');
+}
+
+async function startTIScan(){
+  const btn=document.getElementById('tiScanBtn');
+  if(btn){btn.textContent='Scanning...';btn.disabled=true;}
+  const el=document.getElementById('tiScanList');
+  if(el)el.innerHTML=`<div class="ti-section" style="text-align:center;padding:2rem"><div style="font-size:28px;margin-bottom:.5rem;animation:spin 1s linear infinite">⏳</div><div style="font-size:13px;color:var(--text3)">Fetching live data for ${getTIUniverse().length} stocks + regime data + SEC filings...<br>This takes ~${getTIUniverse().length*0.5+5} seconds.</div></div>`;
+  await runTIScan();
+  renderTradeIntelligence();
+}
+
+function setTIEntryAlert(ticker,price){
+  const key=ticker+'_ti_entry';
+  triggerAlerts[key]={ticker,price,direction:'buy',label:'TI Entry Alert: '+ticker,lastFired:null};
+  toast('🔔 Entry alert set for '+ticker+' at $'+price.toFixed(2),'t-success');
+  requestNotifPermission();
+}
+
+async function addToWatchlistFromTI(ticker,entry,stop,target){
+  const exists=watchlist.find(w=>w.ticker===ticker)||positions.find(p=>p.ticker===ticker);
+  if(exists){toast(ticker+' already in portfolio/watchlist','');return;}
+  const w={ticker,company:ticker,targetBuy:entry.toFixed(2),stopLoss:stop.toFixed(2),takeProfit:target.toFixed(2),created_at:new Date().toISOString()};
+  try{const saved=await saveWatch(w);watchlist.push(saved);toast('✓ '+ticker+' added with TI levels','t-success');}catch(e){toast('Error','t-error');}
+}
+
+// ── REGIME TAB ──
+function renderTIRegime(el){
+  const master=getMasterRegime(),btcR=getBTCRegime();
+  el.innerHTML=`
+    <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap">
+      <button class="btn primary sm" onclick="fetchRegimeData().then(()=>setTITab('regime'))">⟳ Refresh Regime Data</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem">
+      <div class="ti-section" style="text-align:center;background:${master==='GREEN'?'rgba(34,197,94,.06)':master==='YELLOW'?'rgba(245,158,11,.06)':'rgba(239,68,68,.06)'}">
+        <div class="ti-label">Master Market Regime</div>
+        <div style="font-size:32px;font-weight:800;color:${master==='GREEN'?'var(--green)':master==='YELLOW'?'var(--yellow)':'var(--red)'}">${master==='GREEN'?'🟢':master==='YELLOW'?'🟡':'🔴'} ${master}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">SPY + QQQ + VIX<25</div>
+      </div>
+      <div class="ti-section" style="text-align:center;background:${btcR==='GREEN'?'rgba(34,197,94,.06)':btcR==='YELLOW'?'rgba(245,158,11,.06)':'rgba(239,68,68,.06)'}">
+        <div class="ti-label">BTC Regime</div>
+        <div style="font-size:32px;font-weight:800;color:${btcR==='GREEN'?'var(--green)':btcR==='YELLOW'?'var(--yellow)':'var(--red)'}">${btcR==='GREEN'?'🟢':btcR==='YELLOW'?'🟡':'🔴'} ${btcR}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">BTC above 10/20DMA + positive 5D</div>
+      </div>
+    </div>
+    <div class="ti-section">
+      <div class="ti-label">Asset Data</div>
+      ${['SPY','QQQ','IWM','BINANCE:BTCUSDT','VIX'].map(sym=>{
+        const d=tiRegimeData[sym];
+        if(!d)return`<div class="ti-row"><span style="font-weight:700">${sym==='BINANCE:BTCUSDT'?'BTC':sym}</span><span class="muted" style="font-size:12px">No data — run scan or refresh</span></div>`;
+        const f=d.flag;
+        return`<div class="ti-row"><span style="font-weight:700;min-width:50px">${sym==='BINANCE:BTCUSDT'?'BTC':sym}</span><span style="font-size:13px">$${d.price?.toLocaleString(undefined,{maximumFractionDigits:2})}</span><span class="${d.dc>=0?'pos':'neg'}" style="font-size:12px">${d.dc>=0?'+':''}${(d.dc||0).toFixed(2)}%</span>${f?`<span class="regime-${f==='FAVORABLE'?'green':f==='MIXED'?'yellow':'red'}">${f}</span>`:''}${d.trendScore!==undefined?`<span style="font-size:11px;color:var(--text3)">Score: ${d.trendScore}/10</span>`:''}</div>`;
+      }).join('')}
+    </div>
+    <div class="ti-section" style="background:rgba(245,158,11,.04);border-color:rgba(245,158,11,.2)">
+      <div class="ti-label" style="color:var(--yellow)">Trading Rule Reminder</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.7">
+        ${master==='RED'?'🔴 <strong style="color:var(--red)">RISK OFF — avoid new long entries.</strong> Market regime is bearish. Only trade with exceptional conviction and small size.':master==='YELLOW'?'🟡 <strong style="color:var(--yellow)">MIXED MARKET — proceed with caution.</strong> Be selective. Higher bar for entries. Reduce position size.':'🟢 <strong style="color:var(--green)">FAVORABLE — conditions support momentum setups.</strong> Still follow entry rules. No chasing.'}
+      </div>
+    </div>`;
+}
+
+// ── UNIVERSE TAB ──
+function renderTIUniverse(el){
+  el.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px">
+      <div class="muted" style="font-size:13px">${getTIUniverse().length} stocks in universe</div>
+      <button class="btn primary sm" onclick="addTIStock()">+ Add Stock</button>
+    </div>
+    <div class="ti-section">
+      ${getTIUniverse().map((u,i)=>`<div class="ti-row">
+        <div style="min-width:55px"><div style="font-weight:700">${esc(u.ticker)}</div><div style="font-size:11px;color:var(--text3)">${esc(u.sector||'')}</div></div>
+        <div style="flex:1"><div style="font-size:12px">${esc(u.company||'')}</div><div style="font-size:11px;color:var(--text3)">${esc(u.theme||'')}${u.linkage?' · ₿ BTC-linked':''}</div></div>
+        ${i<tiUniverse.length?`<button onclick="removeTIStock(${i})" style="padding:3px 8px;border-radius:6px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red);font-size:11px;cursor:pointer">✕</button>`:'<span class="badge b-gray" style="font-size:9px">Auto</span>'}
+      </div>`).join('')}
+    </div>`;
+}
+
+function addTIStock(){
+  const ticker=(prompt('Enter ticker symbol:')||'').trim().toUpperCase();
+  if(!ticker)return;
+  if(tiUniverse.find(u=>u.ticker===ticker)){toast(ticker+' already in universe','');return;}
+  const company=prompt('Company name (optional):')||ticker;
+  const btcLinked=confirm('Is this BTC-linked? (e.g. MSTR, COIN, ASST)');
+  tiUniverse.push({ticker,company,sector:'',theme:'',linkage:btcLinked?'BTC':'',notes:''});
+  setTITab('universe');
+  toast(ticker+' added to universe','t-success');
+}
+
+function removeTIStock(i){
+  if(!confirm('Remove '+tiUniverse[i].ticker+' from universe?'))return;
+  tiUniverse.splice(i,1);
+  setTITab('universe');
+}
+
+// ── NEWS LOG TAB ──
+function renderTINewsLog(el){
+  el.innerHTML=`
+    <div style="margin-bottom:1rem">
+      <div class="ti-section">
+        <div class="ti-label">Add News Entry</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">Ticker</div>
+            <select id="nlTicker" class="ti-input"><option value="">Select ticker...</option>${getTIUniverse().map(u=>`<option value="${esc(u.ticker)}">${esc(u.ticker)}</option>`).join('')}</select></div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">News Type</div>
+            <select id="nlType" class="ti-input"><option>earnings beat</option><option>earnings miss</option><option>analyst upgrade</option><option>analyst downgrade</option><option>partnership</option><option>acquisition</option><option>product launch</option><option>BTC purchase</option><option>financing</option><option>secondary offering</option><option>shelf filing</option><option>SEC filing</option><option>macro sympathy</option><option>no news</option></select></div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">Sentiment (-2 to +2)</div>
+            <select id="nlSentiment" class="ti-input"><option value="2">+2 Strong positive</option><option value="1">+1 Mildly positive</option><option value="0" selected>0 Neutral</option><option value="-1">-1 Mildly negative</option><option value="-2">-2 High danger</option></select></div>
+          <div><div style="font-size:11px;color:var(--text3);margin-bottom:3px">Catalyst Strength (0-3)</div>
+            <select id="nlCatalyst" class="ti-input"><option value="3">3 Strong</option><option value="2" selected>2 Medium</option><option value="1">1 Weak</option><option value="0">0 None</option></select></div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:3px">Headline</div>
+        <input type="text" id="nlHeadline" class="ti-input" placeholder="Paste or type headline..." style="margin-bottom:8px"/>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="nlDilution"/> Dilution risk</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="nlSEC"/> SEC risk</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" id="nlEarnings"/> Earnings risk</label>
+        </div>
+        <button class="btn primary sm" onclick="addTINews()">Add to News Log</button>
+      </div>
+    </div>
+    ${tiNewsLog.length?`<div class="ti-section">
+      <div class="ti-label">News Log (${tiNewsLog.length} entries)</div>
+      ${tiNewsLog.slice().reverse().map((n,i)=>`<div class="ti-row"><div style="flex:1"><div style="font-weight:700;font-size:12px">${esc(n.ticker)} · <span style="color:var(--text3);font-weight:400">${esc(n.type)}</span></div><div style="font-size:11px;color:var(--text2);margin-top:2px">${esc(n.headline||'No headline')}</div><div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap"><span style="font-size:10px;padding:1px 6px;border-radius:4px;background:${n.sentiment>0?'rgba(34,197,94,.1)':n.sentiment<0?'rgba(239,68,68,.1)':'rgba(255,255,255,.06)'};color:${n.sentiment>0?'var(--green)':n.sentiment<0?'var(--red)':'var(--text3)'}">Sentiment: ${n.sentiment>0?'+':''}${n.sentiment}</span>${n.dilutionFlag?'<span class="badge b-red" style="font-size:9px">DILUTION</span>':''}${n.secFlag?'<span class="badge b-red" style="font-size:9px">SEC</span>':''}${n.earningsFlag?'<span class="badge b-yellow" style="font-size:9px">EARNINGS</span>':''}<span style="font-size:10px;color:var(--text3)">${n.freshnessDays}d ago</span></div></div><button onclick="removeTINews(${tiNewsLog.length-1-i})" style="padding:3px 7px;border-radius:6px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red);font-size:11px;cursor:pointer">✕</button></div>`).join('')}
+    </div>`:``}`;
+}
+
+function addTINews(){
+  const ticker=(document.getElementById('nlTicker')?.value||'').trim();
+  if(!ticker){toast('Select a ticker first','t-error');return;}
+  const entry={
+    ticker,date:new Date().toISOString().slice(0,10),
+    type:document.getElementById('nlType')?.value||'no news',
+    headline:document.getElementById('nlHeadline')?.value||'',
+    sentiment:parseInt(document.getElementById('nlSentiment')?.value||'0'),
+    catalystStrength:parseInt(document.getElementById('nlCatalyst')?.value||'0'),
+    dilutionFlag:document.getElementById('nlDilution')?.checked||false,
+    secFlag:document.getElementById('nlSEC')?.checked||false,
+    earningsFlag:document.getElementById('nlEarnings')?.checked||false,
+    freshnessDays:0
+  };
+  tiNewsLog.push(entry);
+  toast('News added for '+ticker,'t-success');
+  setTITab('newslog');
+}
+
+function removeTINews(i){tiNewsLog.splice(i,1);setTITab('newslog');}
+
+// ── TRADE LOG TAB ──
+function renderTITradeLog(el){
+  const totalPL=tiTradeLog.reduce((s,t)=>s+(t.grossPnl||0),0);
+  const wins=tiTradeLog.filter(t=>(t.grossPnl||0)>0).length;
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1rem">
+      <div class="ti-section" style="text-align:center"><div class="ti-label">Total P/L</div><div style="font-size:20px;font-weight:800;color:${totalPL>=0?'var(--green)':'var(--red)'}">${totalPL>=0?'+':''}$${Math.abs(totalPL).toFixed(0)}</div></div>
+      <div class="ti-section" style="text-align:center"><div class="ti-label">Trades</div><div style="font-size:20px;font-weight:800">${tiTradeLog.length}</div></div>
+      <div class="ti-section" style="text-align:center"><div class="ti-label">Win Rate</div><div style="font-size:20px;font-weight:800;color:${wins/tiTradeLog.length>=0.5?'var(--green)':'var(--red)'}">${tiTradeLog.length?Math.round(wins/tiTradeLog.length*100)+'%':'—'}</div></div>
+    </div>
+    <button class="btn primary sm" onclick="openTITradeEntry()" style="margin-bottom:1rem">+ Log New Trade</button>
+    ${tiTradeLog.length?`<div class="ti-section">
+      <div class="ti-label">Trade Journal</div>
+      ${tiTradeLog.slice().reverse().map((t,i)=>`<div class="ti-row"><div style="min-width:50px"><div style="font-weight:700">${esc(t.ticker)}</div><div style="font-size:10px;color:var(--text3)">${t.dateEntered}</div></div><div style="flex:1;font-size:12px"><div style="color:var(--text2)">${esc(t.exitReason||'Open')}</div>${t.mistakeFlag?'<div style="color:var(--red);font-size:10px">⚠️ Mistake flagged</div>':''}</div><div style="text-align:right"><div class="${(t.grossPnl||0)>=0?'pos':'neg'}" style="font-weight:700">${(t.grossPnl||0)>=0?'+':''}$${Math.abs(t.grossPnl||0).toFixed(0)}</div><div style="font-size:10px;color:var(--text3)">${(t.pnlPct*100||0).toFixed(1)}%</div></div></div>`).join('')}
+    </div>`:''}`
+}
+
+function openTITradeEntry(ticker='',entry=0,stop=0,t1=0,t2=0,score=0){
+  document.getElementById('modalWrap').innerHTML=`
+    <div class="modal-bg" onclick="closeBg(event)">
+      <div class="modal" style="max-width:440px">
+        <div class="modal-hdr"><h2>📋 Log Trade</h2><button class="btn ghost sm" onclick="closeModal()">✕</button></div>
+        <div style="display:grid;gap:10px">
+          <div><div class="ti-label">Ticker</div><input id="tlTicker" class="ti-input" value="${esc(ticker)}" placeholder="TICKER"/></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div><div class="ti-label">Entry Price</div><input id="tlEntry" type="number" step="0.01" class="ti-input" value="${entry||''}"/></div>
+            <div><div class="ti-label">Shares</div><input id="tlShares" type="number" class="ti-input" value="${entry?Math.floor(tiSettings.capital/entry):''}"/></div>
+            <div><div class="ti-label">Stop Loss</div><input id="tlStop" type="number" step="0.01" class="ti-input" value="${stop||''}"/></div>
+            <div><div class="ti-label">Target 1</div><input id="tlT1" type="number" step="0.01" class="ti-input" value="${t1||''}"/></div>
+            <div><div class="ti-label">Target 2</div><input id="tlT2" type="number" step="0.01" class="ti-input" value="${t2||''}"/></div>
+            <div><div class="ti-label">Scanner Score</div><input id="tlScore" type="number" class="ti-input" value="${score||''}"/></div>
+          </div>
+          <div><div class="ti-label">Date Entered</div><input id="tlDate" type="date" class="ti-input" value="${new Date().toISOString().slice(0,10)}"/></div>
+          <div class="modal-actions"><button class="btn primary" onclick="saveTITrade()">Save Trade</button></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function saveTITrade(){
+  const trade={
+    ticker:(document.getElementById('tlTicker')?.value||'').toUpperCase(),
+    dateEntered:document.getElementById('tlDate')?.value||new Date().toISOString().slice(0,10),
+    entryPrice:parseFloat(document.getElementById('tlEntry')?.value||0),
+    shares:parseInt(document.getElementById('tlShares')?.value||0),
+    stopLoss:parseFloat(document.getElementById('tlStop')?.value||0),
+    target1:parseFloat(document.getElementById('tlT1')?.value||0),
+    target2:parseFloat(document.getElementById('tlT2')?.value||0),
+    scannerScore:parseInt(document.getElementById('tlScore')?.value||0),
+    grossPnl:0,pnlPct:0,exitReason:'',mistakeFlag:false,
+    dateExited:'',exitPrice:0,holdDays:0
+  };
+  if(!trade.ticker||!trade.entryPrice){toast('Ticker and entry price required','t-error');return;}
+  tiTradeLog.push(trade);
+  closeModal();
+  toast('Trade logged: '+trade.ticker,'t-success');
+  setTITab('tradelog');
+}
+
+// ── SETTINGS TAB ──
+function renderTISettings(el){
+  const s=tiSettings;
+  el.innerHTML=`
+    <div class="ti-section">
+      <div class="ti-label">Risk & Execution</div>
+      ${[['Capital Per Trade','capital','number',s.capital],['Max Risk % of Position','maxRiskPct','number',s.maxRiskPct],['Target 1 %','target1Pct','number',s.target1Pct],['Target 2 %','target2Pct','number',s.target2Pct],['Hard Stop % Default','hardStopPct','number',s.hardStopPct],['Max Hold Days','maxHoldDays','number',s.maxHoldDays],['No Chase % Above Buy Zone','noChaseAbovePct','number',s.noChaseAbovePct],['Min Risk/Reward','minRR','number',s.minRR]].map(([label,key,type,val])=>`<div class="ti-row"><span style="font-size:12px;color:var(--text2)">${label}</span><input type="${type}" value="${val}" step="0.001" onchange="tiSettings['${key}']=parseFloat(this.value)||this.value" style="width:90px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:12px;text-align:right;outline:none"/></div>`).join('')}
+    </div>
+    <div class="ti-section">
+      <div class="ti-label">Action Thresholds</div>
+      ${[['BUY Threshold (≥)','buyThreshold',s.buyThreshold],['WAIT Threshold (≥)','watchThreshold',s.watchThreshold]].map(([label,key,val])=>`<div class="ti-row"><span style="font-size:12px;color:var(--text2)">${label}</span><input type="number" value="${val}" onchange="tiSettings['${key}']=parseInt(this.value)" style="width:70px;padding:5px 8px;border-radius:6px;border:1px solid var(--border);background:var(--bg2);color:var(--text);font-size:12px;text-align:right;outline:none"/></div>`).join('')}
+    </div>
+    <div class="ti-section">
+      <div class="ti-label">Hard Rules (read-only reminder)</div>
+      ${['Do not buy if Action is not BUY','Do not buy above Do Not Chase price','Do not buy within 3 days of earnings','Always place stop before or immediately after entry','Take partial profit at Target 1 unless momentum is exceptional','Exit after 5 trading days if thesis has not paid','No averaging down','No revenge trading','One active position at a time for version 1'].map(r=>`<div style="padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;color:var(--text2);display:flex;align-items:flex-start;gap:6px"><span style="color:var(--red);flex-shrink:0">✕</span>${r}</div>`).join('')}
+    </div>`;
+}
+
+
 // ── LEARN PAGE ──
 function renderLearnPage(){
   const active=LESSONS.filter(l=>!completedLessons.has(l.key));
@@ -3353,6 +4642,18 @@ function renderSettings(){
         <div class="stat-row"><div><div style="font-size:14px;font-weight:500">Export backup</div><div class="muted" style="font-size:12px">Download all positions & watchlist as JSON</div></div><button class="btn sm" onclick="exportData()">Export JSON</button></div>
         <div class="stat-row"><div><div style="font-size:14px;font-weight:500">Restore from backup</div><div class="muted" style="font-size:12px">Re-upload exported JSON — adds to existing data</div></div><div><input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)"/><button class="btn sm" onclick="document.getElementById('importFile').click()">Import JSON</button></div></div>
         <div class="stat-row"><div><div style="font-size:14px;font-weight:500;color:var(--red)">Clear all data</div><div class="muted" style="font-size:12px">Permanently deletes everything</div></div><button class="btn sm danger" onclick="clearAll()">Clear all</button></div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:1.5rem;margin-bottom:1.5rem">
+        <div style="font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem">Security</div>
+        <div class="stat-row"><div><div style="font-size:14px;font-weight:500">Change password</div><div class="muted" style="font-size:12px">Update your portfolio access password</div></div></div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <input type="password" id="newPassIn" placeholder="New password..." style="flex:1;min-width:140px;padding:8px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;outline:none"/>
+          <input type="password" id="newPassConfirm" placeholder="Confirm..." style="flex:1;min-width:140px;padding:8px 12px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;outline:none"/>
+          <button class="btn" onclick="handleChangePassword()">Update</button>
+        </div>
+        <div style="margin-top:.75rem">
+          <button class="btn danger sm" onclick="logOut()">🔒 Log out of this device</button>
+        </div>
       </div>
       <div style="border-top:1px solid var(--border);padding-top:1.5rem">
         <div style="font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem">About</div>
@@ -3604,6 +4905,7 @@ function buildWidgetHTML(order,{winners,losers,watchMovers,bySector,bestSector,m
     earnings:{wide:true,enabled:()=>widgetConfig.earnings,html:()=>`<div class="card"><span class="drag-handle">⠿</span><div class="card-title">📅 Upcoming earnings ${tipIcon('Earnings dates for stocks in your portfolio in the next 30 days.')}</div><div id="earningsWidget"><div class="muted" style="font-size:12px">Loading...</div></div></div>`},
     news:{wide:true,enabled:()=>widgetConfig.news,html:()=>`<div class="card"><span class="drag-handle">⠿</span><div class="card-title">📰 News for your stocks ${tipIcon('Latest news headlines for stocks in your portfolio.')}</div><div id="newsWidget"><div class="muted" style="font-size:12px">Loading news...</div></div></div>`},
     forecast:{wide:true,enabled:()=>widgetConfig.forecast,html:()=>`<div class="card"><span class="drag-handle">⠿</span><div class="card-title">🔮 Forecast signals ${tipIcon('Technical signals based on price momentum and trend. Not financial advice.')}</div><div id="forecastWidget">${renderForecast()}</div></div>`},
+,
     btcLeading:{wide:true,enabled:()=>widgetConfig.btcLeading!==false,html:()=>`<div class="btc-widget"><span class="drag-handle">⠿</span><div class="card-title" style="color:#f7931a">₿ BTC Leading Indicator ${tipIcon('Uses Bitcoin price action as a leading indicator to predict short-term direction of BTC-correlated stocks like STRIVE.')}</div><div id="btcWidgetInner"><div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:.75rem"><select id="btcStock" style="padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:12px;outline:none;cursor:pointer"><option value="MSTR">MSTR (MicroStrategy)</option><option value="COIN">COIN (Coinbase)</option>${positions.filter(p=>['MSTR','COIN','RIOT','MARA','CLSK','CIFR','BTBT','HUT','CORZ','IREN'].includes(p.ticker)||p.ticker==='STRIVE').map(p=>`<option value="${esc(p.ticker)}" selected>${esc(p.ticker)}</option>`).join('')}${watchlist.filter(w=>['MSTR','COIN','RIOT','MARA','STRIVE'].includes(w.ticker)).map(w=>`<option value="${esc(w.ticker)}">${esc(w.ticker)}</option>`).join('')}</select><button onclick="runBTCAnalysis()" style="padding:6px 14px;border-radius:var(--radius);border:1px solid rgba(247,147,26,.4);background:rgba(247,147,26,.1);color:#f7931a;font-size:12px;font-weight:700;cursor:pointer">⚡ Analyse</button></div><div id="btcResult" style="font-size:12px;color:var(--text3)">Select a stock and tap Analyse to run the BTC correlation analysis.</div></div></div>`},
     activity:{wide:true,enabled:()=>widgetConfig.activity,html:()=>`<div class="card interactive" onclick="openWidgetPopup('activity')"><span class="drag-handle">⠿</span><div class="card-title">🕐 Recent activity</div>${notifications.slice(0,5).map(n=>{const icons={alert:'🔔',gain:'📈',loss:'📉',move:'⚡',scanner:'🔭'};return`<div style="padding:7px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:flex-start"><span style="font-size:16px">${icons[n.type]||'📌'}</span><div><div style="font-size:12px;font-weight:600">${esc(n.title)}</div><div style="font-size:11px;color:var(--text3)">${timeAgo(n.created_at)}</div></div></div>`;}).join('')||'<div class="muted" style="font-size:12px">Activity will appear here as you use the app.</div>'}</div>`}
   };
@@ -3711,5 +5013,53 @@ async function requestNotifPermission(){
   }
 }
 </script>
+
+<!-- AUTH SCREEN -->
+<div id="authScreen" class="auth-screen" style="display:none">
+  <div class="auth-card">
+    <div class="auth-logo">📈</div>
+    <div class="auth-title">Shimar's Portfolio</div>
+    <div class="auth-sub" id="authSub">Enter your password to access your portfolio</div>
+    <div class="auth-error" id="authError"></div>
+    <input type="password" class="auth-input" id="authInput" placeholder="••••••••" maxlength="50"
+      onkeydown="if(event.key==='Enter')submitAuth()"/>
+    <div id="authConfirmWrap" style="display:none">
+      <input type="password" class="auth-input" id="authConfirm" placeholder="Confirm password" maxlength="50"
+        onkeydown="if(event.key==='Enter')submitAuth()"/>
+    </div>
+    <label class="auth-remember" id="authRememberWrap">
+      <input type="checkbox" id="authRemember" checked style="width:16px;height:16px;cursor:pointer"/>
+      <span>Remember this device for 30 days</span>
+    </label>
+    <button class="auth-btn" id="authBtn" onclick="submitAuth()">Unlock</button>
+    <div class="auth-hint" id="authHint">Your password is stored securely and never shared.</div>
+  </div>
+</div>
+
+
+<!-- SELL MODAL -->
+<div id="sellModalOverlay" class="sell-modal-overlay" style="display:none" onclick="if(event.target===this)closeSellModal()">
+  <div class="sell-modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div>
+        <div style="font-size:18px;font-weight:800" id="sellModalTicker">—</div>
+        <div style="font-size:12px;color:var(--text3)" id="sellModalMeta">—</div>
+      </div>
+      <button onclick="closeSellModal()" style="width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);color:var(--text2);cursor:pointer;font-size:16px">✕</button>
+    </div>
+    <div id="sellModalBody"></div>
+  </div>
+</div>
+
+<!-- TV CHART MODAL -->
+<div class="tv-modal hidden" id="tvModal">
+  <div class="tv-hdr">
+    <button onclick="closeTVModal()" style="width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#fff;cursor:pointer;font-size:16px;flex-shrink:0">✕</button>
+    <div style="font-weight:800;font-size:15px" id="tvModalTicker">Chart</div>
+    <div style="margin-left:auto;display:flex;gap:6px" id="tvModalBtns"></div>
+  </div>
+  <iframe class="tv-chart-frame" id="tvFrame" src="" allowtransparency="true" frameborder="0" scrolling="no"></iframe>
+</div>
+
 </body>
 </html>
