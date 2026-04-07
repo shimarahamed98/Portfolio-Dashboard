@@ -703,11 +703,11 @@ const SB='https://auretlkwhsloupoynsvi.supabase.co';
 const SUPABASE_URL=SB; // alias
 const SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1cmV0bGt3aHNsb3Vwb3luc3ZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjU2MjYsImV4cCI6MjA5MDgwMTYyNn0.nPDHUoEwu9ycq38tDhKe5MB75OAmmJBma8fkQtojnoI';
 const H={'Content-Type':'application/json','apikey':SK,'Authorization':'Bearer '+SK,'Prefer':'return=representation'};
-const T={pos:SB+'/rest/v1/positions',watch:SB+'/rest/v1/watchlist',notif:SB+'/rest/v1/notifications',prices:SB+'/rest/v1/price_cache',settings:SB+'/rest/v1/app_settings',fired:SB+'/rest/v1/alert_fired_log',notes:SB+'/rest/v1/stock_notes',learn:SB+'/rest/v1/learn_progress'};
+const T={pos:SB+'/rest/v1/positions',watch:SB+'/rest/v1/watchlist',notif:SB+'/rest/v1/notifications',prices:SB+'/rest/v1/price_cache',settings:SB+'/rest/v1/app_settings',fired:SB+'/rest/v1/alert_fired_log',notes:SB+'/rest/v1/stock_notes',learn:SB+'/rest/v1/learn_progress',trades:SB+'/rest/v1/trade_history',aichats:SB+'/rest/v1/ai_conversations'};
 
 // ── STATE ──
 let positions=[],watchlist=[],priceCache={},notifications=[],stockNotes={};
-let apiKey='',openaiKey='',page='dashboard',charts={};
+let apiKey='',openaiKey='',telegramToken='8680097064:AAFW4SjvMOAxf0htuazTG2Ei1Wq7DqM7lcA',telegramChatId='8601451450',page='dashboard',charts={};
 let sbCollapsed=false,sidebarOpen=false;
 let currentDrawerPos=null,currentDrawerTab='overview';
 let currentLesson=null;
@@ -938,6 +938,14 @@ async function savePrices(){
     try{const ex=await fetch(T.prices+'?ticker=eq.'+ticker+'&select=id',{headers:H});const rows=await ex.json();if(rows?.length)await sbUpd(T.prices,'ticker=eq.'+ticker,{data,updated_at:new Date().toISOString()});else await sbIns(T.prices,{ticker,data,updated_at:new Date().toISOString()});}catch(e){}
   }
 }
+async function loadTradeHistory(){
+  try{
+    var r=await fetch(SUPABASE_URL+'/rest/v1/trade_history?order=sold_at.desc&limit=100',{headers:H});
+    if(!r.ok)return[];
+    return await r.json();
+  }catch(e){return[];}
+}
+
 async function loadNotes(){try{const r=await sbQ(T.notes,'');const n={};r.forEach(row=>{n[row.ticker]=row.notes;});return n;}catch(e){return {};}}
 async function saveNote(ticker,notes){try{const ex=await fetch(T.notes+'?ticker=eq.'+ticker+'&select=id',{headers:H});const rows=await ex.json();if(rows?.length)await sbUpd(T.notes,'ticker=eq.'+ticker,{notes,updated_at:new Date().toISOString()});else await sbIns(T.notes,{ticker,notes,updated_at:new Date().toISOString()});}catch(e){}}
 async function loadLearnStreak(){try{const r=await sbQ(T.learn,'order=completed_at.desc&limit=1');if(!r.length)return 0;const lastDate=new Date(r[0].streak_date);const today=new Date();const diff=Math.floor((today-lastDate)/(1000*60*60*24));return diff<=1?parseInt(r[0].completed_at?.streak||1):0;}catch(e){return 0;}}
@@ -954,24 +962,38 @@ async function init(){
 }
 
 async function bootApp(){
-  setLM('Loading portfolio...');
+  // ── PHASE 1: Show app immediately ──
+  // Hide loading screen right away — never keep user waiting
   try{apiKey=localStorage.getItem('ts_key')||'';}catch(e){}
-  [positions,watchlist,notifications,priceCache,stockNotes]=await Promise.all([loadPositions(),loadWatch(),loadNotifications(),loadPrices(),loadNotes()]);
-  const savedKey=await getSetting('finnhub_key');
-  if(savedKey&&!apiKey){apiKey=savedKey;try{localStorage.setItem('ts_key',apiKey);}catch(e){}}
-  const savedOAKey=await getSetting('openai_key');
-  if(savedOAKey)openaiKey=savedOAKey;
-  const savedWC=await getSetting('widget_config');if(savedWC)try{Object.assign(widgetConfig,JSON.parse(savedWC));}catch(e){}
-  const savedOrder=await getSetting('widget_order');if(savedOrder)try{widgetOrder=JSON.parse(savedOrder);}catch(e){}
-  learnStreak=await loadLearnStreak();
-  completedLessons=await loadCompletedLessons();
-  currentLesson=getTodayLesson();
-  setSyncStatus('ok');
-  updateNotifBadge();
   hideLoading();
   const startPage=restoreLastPage();
   go(startPage);
+
+  // ── PHASE 2: Load data in background ──
+  setLM('Syncing...');
+  try{
+    [positions,watchlist,notifications,priceCache,stockNotes]=await Promise.all([
+      loadPositions(),loadWatch(),loadNotifications(),loadPrices(),loadNotes()
+    ]);
+  }catch(e){console.log('Data load error:',e);}
+
+  // ── PHASE 3: Load settings (non-blocking, each wrapped) ──
+  try{const k=await getSetting('finnhub_key');if(k&&!apiKey){apiKey=k;try{localStorage.setItem('ts_key',apiKey);}catch(e){}}}catch(e){}
+  try{const k=await getSetting('openai_key');if(k)openaiKey=k;}catch(e){}
+  try{const k=await getSetting('telegram_token');if(k)telegramToken=k;else{setSetting('telegram_token','8680097064:AAFW4SjvMOAxf0htuazTG2Ei1Wq7DqM7lcA').catch(()=>{});}}catch(e){}
+  try{const k=await getSetting('telegram_chat_id');if(k)telegramChatId=k;else{setSetting('telegram_chat_id','8601451450').catch(()=>{});}}catch(e){}
+  try{const k=await getSetting('widget_config');if(k)Object.assign(widgetConfig,JSON.parse(k));}catch(e){}
+  try{const k=await getSetting('widget_order');if(k)widgetOrder=JSON.parse(k);}catch(e){}
+  try{learnStreak=await loadLearnStreak();}catch(e){}
+  try{completedLessons=await loadCompletedLessons();}catch(e){}
+  currentLesson=getTodayLesson();
+
+  // ── PHASE 4: Refresh UI with loaded data ──
+  setSyncStatus('ok');
+  updateNotifBadge();
+  go(page); // re-render current page with real data
   if(apiKey&&positions.length)refreshPrices();
+
   setInterval(checkAlerts,60000);
   setInterval(checkSellAlerts,60000);
   setInterval(autoSync,30000);
@@ -1137,14 +1159,55 @@ async function refreshPrices(){
 }
 
 // ── ALERTS ──
+async // ── TELEGRAM ──
+async function sendTelegram(message){
+  if(!telegramToken||!telegramChatId)return;
+  try{
+    await fetch('https://api.telegram.org/bot'+telegramToken+'/sendMessage',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:telegramChatId,text:message,parse_mode:'HTML'})
+    });
+  }catch(e){console.log('Telegram send failed:',e);}
+}
+
+function buildTelegramMsg(type,ticker,price,targetPrice,label,extra){
+  var emoji=type==='buy'?'🎯':type==='sell'?'💰':type==='stop'?'🚨':type==='tp'?'✅':'🔔';
+  var action=type==='buy'?'BUY SIGNAL':type==='sell'?'SELL SIGNAL':type==='stop'?'STOP LOSS HIT':type==='tp'?'TAKE PROFIT HIT':'PRICE ALERT';
+  var msg=emoji+' <b>'+action+' — '+ticker+'</b>\n';
+  msg+='Current price: <b>$'+price.toFixed(2)+'</b>\n';
+  if(targetPrice)msg+='Target: $'+targetPrice.toFixed(2)+'\n';
+  if(label)msg+='Signal: '+label+'\n';
+  if(extra)msg+=extra+'\n';
+  msg+='\n<i>Shimar Portfolio · '+new Date().toLocaleTimeString()+'</i>';
+  return msg;
+}
+
+// ── MAIN ALERT CHECKER — async, fires once per alert per day ──
 async function checkAlerts(){
-  for(const p of positions){
+  var today=new Date().toDateString();
+  var THRESHOLD=0.25; // fire when within $0.25 of target
+
+  for(var pi=0;pi<positions.length;pi++){
+    var p=positions[pi];
     if(!priceCache[p.ticker])continue;
-    const c=priceCache[p.ticker].current;
-    for(const a of getAlerts(p)){
+    var c=priceCache[p.ticker].current||0;
+    if(!c)continue;
+    var alerts=getAlerts(p);
+    for(var ai=0;ai<alerts.length;ai++){
+      var a=alerts[ai];
       if(!a.price)continue;
-      const pct=Math.abs(c-a.price)/a.price;
-      if(pct<0.008)await addNotif(`Alert: ${p.ticker} near $${a.price.toFixed(2)}`,`Current price $${c.toFixed(2)}${a.label?' · '+a.label:''}`,'alert',p.ticker);
+      var diff=Math.abs(c-a.price);
+      if(diff<=THRESHOLD){
+        var key='price_alert_'+p.ticker+'_'+a.price+'_'+today;
+        if(notifiedSignals[key])continue;
+        notifiedSignals[key]=true;
+        var dir=c>=a.price?'reached':'approaching';
+        var label=a.label||'Price alert';
+        await addNotif('🔔 '+label+' — '+p.ticker,'Price $'+c.toFixed(2)+' has '+dir+' your alert level $'+a.price.toFixed(2),'alert',p.ticker);
+        // Telegram
+        sendTelegram(buildTelegramMsg('alert',p.ticker,c,a.price,label,''));
+      }
     }
   }
   updateAlertBadges();
@@ -1878,47 +1941,107 @@ async function saveNoteFromDrawer(ticker){
 
 // ── ALERTS PAGE ──
 function renderAlertsPage(){
-  const active=positions.filter(p=>getAlerts(p).length>0);
-  document.getElementById('content').innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-      <div class="muted" style="font-size:13px">${active.length} positions with alerts · fires once per event</div>
-      <button class="btn sm" onclick="refreshPrices()">⟳ Update prices</button>
-    </div><div id="alertsList"></div>`;
-  const el=document.getElementById('alertsList');
-  if(!active.length){el.innerHTML=`<div class="no-data"><div class="ndi">🔕</div><p>No alerts set yet.</p><button class="btn primary" onclick="go('portfolio')">Go to Portfolio</button></div>`;return;}
-  // Show trigger alerts section
-  const trigKeys=Object.keys(triggerAlerts);
+  var el=document.getElementById('content');
+  // Count all active alerts
+  var posAlerts=[];
+  positions.forEach(function(p){
+    var als=getAlerts(p);
+    als.forEach(function(a){
+      if(a.price)posAlerts.push({pos:p,alert:a});
+    });
+  });
+  var trigKeys=Object.keys(triggerAlerts);
+  var totalCount=posAlerts.length+trigKeys.length;
+
+  el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:8px">'+
+    '<div><div style="font-size:16px;font-weight:700">🔔 Alerts</div>'+
+    '<div class="muted" style="font-size:12px">'+totalCount+' active · fires when price is within $0.25 · Telegram enabled: '+(telegramToken?'✅':'❌ (add in Settings)')+'</div></div>'+
+    '<button class="btn sm" onclick="refreshPrices()">⟳ Update prices</button>'+
+    '</div>'+
+    '<div id="alertsList"></div>';
+
+  var listEl=document.getElementById('alertsList');
+  var html='';
+
+  // ── TRIGGER ALERTS ──
   if(trigKeys.length){
-    document.getElementById('content').insertAdjacentHTML('afterbegin',
-      '<div class="card" style="margin-bottom:1rem;border-color:rgba(251,191,36,.2);background:rgba(251,191,36,.04)">'+
-      '<div class="card-title">🎯 Active Trigger Alerts <span class="badge b-yellow" style="font-size:10px">'+trigKeys.length+'</span></div>'+
-      trigKeys.map(function(k){
-        var t=triggerAlerts[k];
-        return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'+
-          '<span style="font-weight:800;min-width:55px">'+esc(t.ticker)+'</span>'+
-          '<span class="badge '+(t.direction==='buy'?'b-green':'b-red')+'" style="font-size:10px">'+(t.direction==='buy'?'BUY':'SELL')+'</span>'+
-          '<span style="font-size:12px;flex:1">Trigger at $'+t.price.toFixed(2)+'</span>'+
-          (t.lastFired?'<span style="font-size:10px;color:var(--text3)">Last fired: '+t.lastFired+'</span>':'')+
-          '<button onclick="removeTriggerAlert(this)" data-key="'+k+'" style="padding:3px 8px;border-radius:6px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red);font-size:11px;cursor:pointer">✕</button>'+
-          '</div>';
-      }).join('')+
-      '</div>'
-    );
+    html+='<div class="card" style="margin-bottom:1rem;border-color:rgba(251,191,36,.25);background:rgba(251,191,36,.03)">';
+    html+='<div class="card-title">🎯 Trigger Alerts <span class="badge b-yellow" style="font-size:10px">'+trigKeys.length+'</span></div>';
+    trigKeys.forEach(function(k){
+      var t=triggerAlerts[k];
+      var c=(priceCache[t.ticker]&&priceCache[t.ticker].current)||0;
+      var diff=c?Math.abs(c-t.price).toFixed(2):'—';
+      var close=c&&Math.abs(c-t.price)<=0.5;
+      html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">';
+      html+='<span style="font-weight:800;min-width:55px">'+esc(t.ticker)+'</span>';
+      html+='<span class="badge '+(t.direction==='buy'?'b-green':'b-red')+'" style="font-size:10px">'+(t.direction==='buy'?'BUY':'SELL')+'</span>';
+      html+='<div style="flex:1"><div style="font-size:13px">Trigger at <strong>$'+t.price.toFixed(2)+'</strong></div>';
+      html+='<div style="font-size:11px;color:var(--text3)">'+(c?'Current: $'+c.toFixed(2)+' · $'+diff+' away':'No price data')+
+        (close?'<span style="color:var(--yellow);margin-left:6px;font-weight:700">⚡ CLOSE</span>':'')+
+        (t.lastFired?'<span style="margin-left:6px">· Last fired: '+t.lastFired+'</span>':'')+'</div></div>';
+      html+='<button onclick="removeTriggerAlert(this)" data-key="'+k+'" style="padding:5px 10px;border-radius:6px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red);font-size:11px;cursor:pointer">Remove</button>';
+      html+='</div>';
+    });
+    html+='</div>';
   }
 
-  el.innerHTML=active.map(p=>{
-    const idx=positions.indexOf(p),c=priceCache[p.ticker]?.current,als=getAlerts(p),anyNear=c&&als.some(a=>Math.abs(c-a.price)/a.price<0.02);
-    return`<div class="pos-card${anyNear?' near-t':''}">
-      <div style="min-width:60px"><div style="font-weight:800;font-size:16px">${esc(p.ticker)}</div><div style="font-size:11px;color:var(--text3)">${esc(p.company||'')}</div></div>
-      <div class="muted" style="font-size:13px">${c?'Now <strong style="color:var(--text)">$'+c.toFixed(2)+'</strong>':'—'}</div>
-      <div style="flex:1;display:flex;flex-wrap:wrap;gap:6px">
-        ${als.map((a,ai)=>{const near=c&&Math.abs(c-a.price)/a.price<0.02,pct=c?((c-a.price)/a.price*100):null;return`<div style="background:var(--bg3);border:1px solid ${near?'var(--yellow)':'var(--border)'};border-radius:9px;padding:7px 12px;display:flex;align-items:center;gap:8px"><span style="font-weight:800">$${a.price.toFixed(2)}</span>${a.label?`<span class="badge b-yellow" style="font-size:10px">${esc(a.label)}</span>`:''} ${pct!==null?`<span class="${near?'warn':pct<0?'neg':'pos'}" style="font-size:12px;font-weight:600">${pct>=0?'+':''}${pct.toFixed(1)}%</span>`:''}<button class="btn xs danger" onclick="rmAlertDirect(${idx},${ai})">✕</button></div>`;}).join('')}
-      </div>
-      <button class="btn sm" onclick="openPositionDrawer(${idx});setTimeout(()=>switchDTab('alerts'),300)">+ Add</button>
-    </div>`;
-  }).join('');
+  // ── POSITION PRICE ALERTS ──
+  if(posAlerts.length){
+    html+='<div class="card" style="margin-bottom:1rem">';
+    html+='<div class="card-title">🔔 Price Alerts <span class="badge b-gray" style="font-size:10px">'+posAlerts.length+'</span></div>';
+    posAlerts.forEach(function(pa){
+      var p=pa.pos,a=pa.alert;
+      var c=(priceCache[p.ticker]&&priceCache[p.ticker].current)||0;
+      var diff=c?Math.abs(c-a.price).toFixed(2):'—';
+      var close=c&&Math.abs(c-a.price)<=0.5;
+      html+='<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">';
+      html+='<span style="font-weight:800;min-width:55px">'+esc(p.ticker)+'</span>';
+      html+='<div style="flex:1"><div style="font-size:13px">Alert at <strong>$'+a.price.toFixed(2)+'</strong>'+(a.label?' — '+esc(a.label):'')+'</div>';
+      html+='<div style="font-size:11px;color:var(--text3)">'+(c?'Current: $'+c.toFixed(2)+' · $'+diff+' away':'No price data')+
+        (close?'<span style="color:var(--yellow);margin-left:6px;font-weight:700">⚡ CLOSE</span>':'')+'</div></div>';
+      html+='<button data-pos-id="'+p._id+'" data-price="'+a.price+'" data-label="'+(a.label||'')+'" data-ticker="'+p.ticker+'" onclick="rmAlertByData(this)" style="padding:5px 10px;border-radius:6px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red);font-size:11px;cursor:pointer">Remove</button>';
+      html+='</div>';
+    });
+    html+='</div>';
+  }
+
+  // Empty state
+  if(!totalCount){
+    html='<div class="no-data"><div class="ndi">🔕</div><p>No alerts set yet.</p>';
+    html+='<div style="margin-top:1rem;font-size:13px;color:var(--text3)">Set alerts from:<br>• Stock drawer → Alerts tab<br>• Deep Analysis → Entry/Trigger Alert button<br>• Trade Intelligence → Set Entry Alert</div></div>';
+  }
+
+  listEl.innerHTML=html;
 }
-async function rmAlertDirect(posIdx,ai){const als=getAlerts(positions[posIdx]).filter((_,i)=>i!==ai);positions[posIdx].alerts=als;delete positions[posIdx].alertPrice;try{positions[posIdx]=await savePos(positions[posIdx]);renderAlertsPage();}catch(e){toast('Error','t-error');}}
+
+async function rmAlertByData(btn){
+  var posId=btn.getAttribute('data-pos-id');
+  var price=parseFloat(btn.getAttribute('data-price'));
+  var label=btn.getAttribute('data-label')||'';
+  var ticker=btn.getAttribute('data-ticker');
+  await rmAlertDirect(posId,price,label,ticker);
+}
+
+async function rmAlertDirect(posIdOrIdx,price,label,ticker){
+  // Find position by _id string or numeric index
+  var posIdx=-1;
+  if(typeof posIdOrIdx==='number'){
+    posIdx=posIdOrIdx;
+  } else {
+    posIdx=positions.findIndex(function(p){return p._id===posIdOrIdx||p.ticker===ticker;});
+  }
+  if(posIdx<0){toast('Position not found','t-error');return;}
+  var pos=positions[posIdx];
+  // Remove matching alert
+  var als=getAlerts(pos).filter(function(a){return!(Math.abs(a.price-price)<0.001);});
+  pos.alerts=als;
+  delete pos.alertPrice;
+  try{
+    positions[posIdx]=await savePos(pos);
+    toast('Alert removed','');
+    renderAlertsPage();
+  }catch(e){toast('Error removing alert','t-error');}
+}
 
 // ── SCANNER ──
 let scannerLastRun=null;
@@ -2665,6 +2788,123 @@ async function loadTerminalAnalysis(){
   if(candles.length){
     setTimeout(function(){renderTerminalCharts(candles,rsiVals,macdData,myData);},100);
   }
+
+  // AI ENRICHMENT — async, enriches scenarios and entry advice after rule-based render
+  if(openaiKey&&openaiKey.length>10){
+    enrichDeepAnalysisWithAI(s,latestRSI,latestMACD,pattern,candles,myData);
+  }
+}
+
+// ── AI DEEP ANALYSIS ENRICHMENT ──
+async function enrichDeepAnalysisWithAI(s,rsi,macd,pattern,candles,myData){
+  // Show AI loading indicator
+  var aiDiv=document.createElement('div');
+  aiDiv.id='tm-ai-enrichment';
+  aiDiv.className='tm-section tm-section-full';
+  aiDiv.style.cssText='border-color:rgba(124,111,255,.3);background:rgba(124,111,255,.04)';
+  aiDiv.innerHTML='<div class="tm-section-title" style="color:var(--accent2)">🤖 AI Deep Analysis</div>'+
+    '<div style="display:flex;align-items:center;gap:10px;color:var(--text3);font-size:13px">'+
+    '<div style="width:16px;height:16px;border:2px solid var(--accent2);border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite"></div>'+
+    'Generating personalised analysis for '+esc(s.ticker)+'...</div>';
+  var body=document.getElementById('tm-body');
+  if(body)body.appendChild(aiDiv);
+
+  try{
+    var c=s.price||0;
+    var dc=s.dc||0;
+    // Build compact but data-rich prompt
+    var prompt='You are a professional swing trader. Analyse this stock and give SPECIFIC, ACTIONABLE advice.\n\n';
+    prompt+='STOCK: '+s.ticker+'\n';
+    prompt+='Current price: $'+c.toFixed(2)+'\n';
+    prompt+='Day change: '+(dc>=0?'+':'')+dc.toFixed(2)+'%\n';
+    prompt+='Signal type: '+s.type+'\n';
+    if(rsi)prompt+='RSI(14): '+rsi.toFixed(1)+(rsi>70?' (overbought)':rsi<30?' (oversold)':' (neutral)')+'\n';
+    if(macd!==null)prompt+='MACD: '+(macd>0?'bullish':'bearish')+' ('+macd.toFixed(3)+')\n';
+    if(pattern)prompt+='Candle pattern: '+pattern.name+' — '+pattern.desc+'\n';
+    if(myData){
+      if(myData.avgBuy)prompt+='My avg buy: $'+parseFloat(myData.avgBuy).toFixed(2)+'\n';
+      if(myData.stopLoss)prompt+='My stop loss: $'+parseFloat(myData.stopLoss).toFixed(2)+'\n';
+      if(myData.takeProfit)prompt+='My take profit: $'+parseFloat(myData.takeProfit).toFixed(2)+'\n';
+      if(myData.support)prompt+='Support level: $'+parseFloat(myData.support).toFixed(2)+'\n';
+      if(myData.resistance)prompt+='Resistance level: $'+parseFloat(myData.resistance).toFixed(2)+'\n';
+      if(myData.shares)prompt+='My position: '+myData.shares+' shares ('+(myData._source==='portfolio'?'I OWN THIS':'Watching')+')'+'\n';
+    }
+    if(candles.length>=5){
+      var last5=candles.slice(-5).map(function(c){return '$'+c.c.toFixed(2);}).join(' → ');
+      prompt+='Last 5 closes: '+last5+'\n';
+    }
+    prompt+='\nRespond in this EXACT JSON format (no markdown, no extra text):\n';
+    prompt+='{"entry_advice":"2-3 sentences on exact entry conditions, specific price levels","chase_warning":"1 sentence — would you chase right now? Yes/No and why","watching_for":["bullet 1","bullet 2","bullet 3"],"scenarios":[{"title":"Scenario A title","type":"good","probability":40,"steps":["step1","step2"],"outcome":"outcome text"},{"title":"Scenario B title","type":"bad","probability":35,"steps":["step1","step2"],"outcome":"outcome text"},{"title":"Scenario C title","type":"neutral","probability":25,"steps":["step1","step2"],"outcome":"outcome text"}],"risk_note":"1 sentence on the biggest risk right now"}';
+
+    var resp=await fetch('https://api.openai.com/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+openaiKey},
+      body:JSON.stringify({
+        model:'gpt-4o',
+        max_tokens:1000,
+        response_format:{type:'json_object'},
+        messages:[
+          {role:'system',content:'You are a professional swing trader. Always respond with valid JSON only, no markdown.'},
+          {role:'user',content:prompt}
+        ]
+      })
+    });
+    var data=await resp.json();
+    var text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+    var clean=text.replace(/```json|```/g,'').trim();
+    var ai=JSON.parse(clean);
+
+    // Render AI enrichment
+    var html='<div class="tm-section-title" style="color:var(--accent2)">🤖 AI Deep Analysis — '+esc(s.ticker)+'</div>';
+
+    // Entry advice + chase warning
+    html+='<div style="background:rgba(124,111,255,.08);border-radius:10px;padding:1rem;margin-bottom:.75rem">';
+    html+='<div style="font-size:11px;font-weight:800;color:var(--accent2);text-transform:uppercase;margin-bottom:.5rem">📍 Entry Advice</div>';
+    html+='<div style="font-size:13px;color:var(--text2);line-height:1.6">'+esc(ai.entry_advice||'')+'</div>';
+    html+='</div>';
+
+    var chaseColor=ai.chase_warning&&ai.chase_warning.toLowerCase().includes('no')?'var(--red)':'var(--yellow)';
+    html+='<div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:.75rem;margin-bottom:.75rem">';
+    html+='<div style="font-size:11px;font-weight:800;color:var(--red);text-transform:uppercase;margin-bottom:4px">⚡ Chase Warning</div>';
+    html+='<div style="font-size:13px;color:var(--text2)">'+esc(ai.chase_warning||'')+'</div>';
+    html+='</div>';
+
+    // Watching for
+    if(ai.watching_for&&ai.watching_for.length){
+      html+='<div style="margin-bottom:.75rem">';
+      html+='<div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem">👁️ What I\'m Watching For</div>';
+      html+=(ai.watching_for||[]).map(function(w){return'<div style="display:flex;align-items:flex-start;gap:8px;padding:5px 0;font-size:13px;color:var(--text2)"><span style="color:var(--accent2);flex-shrink:0">→</span>'+esc(w)+'</div>';}).join('');
+      html+='</div>';
+    }
+
+    // AI Scenarios
+    if(ai.scenarios&&ai.scenarios.length){
+      html+='<div style="font-size:11px;font-weight:800;color:var(--text3);text-transform:uppercase;margin-bottom:.5rem">🎯 AI Scenarios</div>';
+      (ai.scenarios||[]).forEach(function(sc,i){
+        var color=sc.type==='good'?'var(--green)':sc.type==='bad'?'var(--red)':'var(--yellow)';
+        var bg=sc.type==='good'?'rgba(34,197,94,.06)':sc.type==='bad'?'rgba(239,68,68,.06)':'rgba(245,158,11,.06)';
+        html+='<div style="background:'+bg+';border-radius:10px;padding:.875rem;margin-bottom:.5rem">';
+        html+='<div style="font-size:12px;font-weight:800;color:'+color+';margin-bottom:.4rem">'+String.fromCharCode(65+i)+'. '+esc(sc.title||'')+'</div>';
+        (sc.steps||[]).forEach(function(st){html+='<div style="font-size:12px;color:var(--text2);padding:2px 0">• '+esc(st)+'</div>';});
+        html+='<div style="font-size:12px;color:'+color+';margin-top:.4rem;font-weight:600">'+esc(sc.outcome||'')+'</div>';
+        html+='<div style="font-size:11px;color:var(--text3);margin-top:2px">'+((sc.probability)||0)+'% probability</div>';
+        html+='</div>';
+      });
+    }
+
+    // Risk note
+    if(ai.risk_note){
+      html+='<div style="background:rgba(239,68,68,.04);border-radius:8px;padding:.75rem;margin-top:.5rem;font-size:12px;color:var(--text3)">⚠️ <strong style="color:var(--text2)">Key risk:</strong> '+esc(ai.risk_note)+'</div>';
+    }
+
+    var el=document.getElementById('tm-ai-enrichment');
+    if(el)el.innerHTML=html;
+
+  }catch(e){
+    console.log('AI enrichment error:',e);
+    var el2=document.getElementById('tm-ai-enrichment');
+    if(el2)el2.innerHTML='<div class="tm-section-title" style="color:var(--accent2)">🤖 AI Analysis</div><div style="color:var(--text3);font-size:13px">AI enrichment unavailable — check your API key in Settings.<br>The rule-based analysis above is still valid.</div>';
+  }
 }
 
 // ── TRIGGER ALERT SYSTEM ──
@@ -2692,8 +2932,9 @@ function checkTriggerAlerts(){
     var notifKey=key+'_'+today;
     if(notifiedSignals[notifKey])return;
     var triggered=false;
-    if(tr.direction==='buy'&&c<=tr.price*1.02&&c>=tr.price*0.98)triggered=true;
-    if(tr.direction==='sell'&&c>=tr.price*0.98)triggered=true;
+    var diff=Math.abs(c-tr.price);
+    if(tr.direction==='buy'&&diff<=0.25&&c<=tr.price)triggered=true;
+    if(tr.direction==='sell'&&diff<=0.25&&c>=tr.price)triggered=true;
     if(triggered){
       notifiedSignals[notifKey]=true;
       tr.lastFired=today;
@@ -2704,6 +2945,7 @@ function checkTriggerAlerts(){
         ?'Entry trigger hit at $'+tr.price.toFixed(2)+'. Review and execute if setup confirms.'
         :'Exit trigger hit at $'+tr.price.toFixed(2)+'. Execute your exit plan now.';
       addNotif(tMsg,tBody,'alert',tr.ticker);
+      sendTelegram(buildTelegramMsg(tr.direction==='buy'?'buy':'sell',tr.ticker,c,tr.price,tr.label||'Trigger alert',tr.direction==='buy'?'Entry condition confirmed. Check setup before executing.':'Exit trigger reached. Execute your plan now.'));
       if('Notification' in window&&Notification.permission==='granted'){
         new Notification(tr.direction==='buy'?'🎯 Buy Trigger: '+tr.ticker:'🚨 Sell Trigger: '+tr.ticker,{body:tMsg,tag:key});
       }
@@ -3358,25 +3600,21 @@ async function checkAuth(){
     return Promise.race([promise,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);
   }
 
-  // Check device token first — local check, instant
+  // Check device token first — trust local token instantly, no Supabase round-trip
   try{
     const token=localStorage.getItem(AUTH_TOKEN_KEY);
     const expiry=localStorage.getItem(AUTH_EXPIRY_KEY);
     if(token&&expiry&&Date.now()<parseInt(expiry)){
-      // Verify token matches Supabase (with 4s timeout)
-      try{
-        const storedToken=await withTimeout(getSetting('auth_device_token'),4000);
-        if(storedToken&&storedToken===token){
-          // Token valid — boot immediately
-          await bootApp();
-          return true;
+      // Valid local token — boot immediately, verify Supabase in background
+      await bootApp();
+      // Background verify (non-blocking)
+      getSetting('auth_device_token').then(function(st){
+        if(st&&st!==token){
+          // Token mismatch — log out silently
+          console.log('Auth token mismatch — session may have been invalidated');
         }
-      }catch(e){
-        // Supabase timeout or error — if we have a local token, trust it and boot
-        console.log('Auth token check failed, using local token:',e.message);
-        await bootApp();
-        return true;
-      }
+      }).catch(function(){});
+      return true;
     }
   }catch(e){}
 
@@ -3890,29 +4128,34 @@ function closeSellModal(){document.getElementById('sellModalOverlay').style.disp
 // Sell notification checker (runs every 60s)
 function checkSellAlerts(){
   if(!positions.length)return;
-  const today=new Date().toDateString();
-  positions.forEach(pos=>{
-    const t=pos.ticker;
-    const c=priceCache[t]?.current||0;
+  var today=new Date().toDateString();
+  var THRESHOLD=0.25;
+  positions.forEach(function(pos){
+    var t=pos.ticker;
+    var c=(priceCache[t]&&priceCache[t].current)||0;
     if(!c)return;
-    const tp=parseFloat((pos.takeProfit||'').split('/')[0])||0;
-    const sl=parseFloat(pos.stopLoss)||0;
-    // TP alert
-    if(tp&&c>=tp*0.97){
-      const key='sell_tp_'+t+'_'+today;
+    var tp=parseFloat((pos.takeProfit||'').split('/')[0])||0;
+    var sl=parseFloat(pos.stopLoss)||0;
+    // Take profit alert — fires when within $0.25
+    if(tp&&Math.abs(c-tp)<=THRESHOLD){
+      var key='sell_tp_'+t+'_'+today;
       if(!notifiedSignals[key]){
         notifiedSignals[key]=true;
-        addNotif('💰 Take Profit: '+t,'Price $'+c.toFixed(2)+' is near your target $'+tp.toFixed(2)+' — consider trimming','alert',t);
-        if('Notification' in window&&Notification.permission==='granted')new Notification('💰 Take Profit: '+t,{body:'Price near target $'+tp.toFixed(2)+' — consider selling',tag:'tp_'+t});
+        var tpMsg='✅ Take Profit hit — '+t+' at $'+c.toFixed(2)+' (target $'+tp.toFixed(2)+')';
+        addNotif('✅ Take Profit: '+t,'Price $'+c.toFixed(2)+' hit your target $'+tp.toFixed(2)+' — take profits now','alert',t);
+        sendTelegram(buildTelegramMsg('tp',t,c,tp,'Take Profit Hit','Consider selling now or trailing your stop'));
+        if('Notification' in window&&Notification.permission==='granted')new Notification('✅ Take Profit: '+t,{body:tpMsg,tag:'tp_'+t});
       }
     }
-    // Stop loss alert
-    if(sl&&c<=sl*1.02){
-      const key='sell_sl_'+t+'_'+today;
-      if(!notifiedSignals[key]){
-        notifiedSignals[key]=true;
-        addNotif('🚨 Stop Loss: '+t,'Price $'+c.toFixed(2)+' near/below stop $'+sl.toFixed(2)+' — EXIT NOW','alert',t);
-        if('Notification' in window&&Notification.permission==='granted')new Notification('🚨 STOP LOSS: '+t,{body:'Price $'+c.toFixed(2)+' — exit now!',tag:'sl_'+t});
+    // Stop loss alert — fires when within $0.25 or below
+    if(sl&&(c<=sl||Math.abs(c-sl)<=THRESHOLD)){
+      var slKey='sell_sl_'+t+'_'+today;
+      if(!notifiedSignals[slKey]){
+        notifiedSignals[slKey]=true;
+        var slMsg=c<=sl?'🚨 STOP LOSS BREACHED':'🚨 Stop Loss approaching';
+        addNotif(slMsg+' — '+t,'Price $'+c.toFixed(2)+(c<=sl?' is BELOW':' near')+' your stop $'+sl.toFixed(2)+(c<=sl?' — EXIT NOW':'— prepare to exit'),'alert',t);
+        sendTelegram(buildTelegramMsg('stop',t,c,sl,c<=sl?'STOP LOSS BREACHED — EXIT NOW':'Stop Loss approaching',c<=sl?'Exit immediately. No exceptions.':'Be ready to execute your stop.'));
+        if('Notification' in window&&Notification.permission==='granted')new Notification(slMsg+': '+t,{body:'$'+c.toFixed(2)+' vs stop $'+sl.toFixed(2),tag:'sl_'+t});
       }
     }
   });
@@ -3921,6 +4164,45 @@ function checkSellAlerts(){
 // ══════════════════════════════════════════════════════
 // PASSWORD CHANGE HANDLER
 // ══════════════════════════════════════════════════════
+async function saveTelegramSettings(){
+  var token=(document.getElementById('tgTokenIn')?.value||'').trim();
+  var chatId=(document.getElementById('tgChatIn')?.value||'').trim();
+  telegramToken=token;
+  telegramChatId=chatId;
+  await setSetting('telegram_token',token);
+  await setSetting('telegram_chat_id',chatId);
+  var st=document.getElementById('tgStatus');
+  if(st)st.textContent='✓ Saved';
+  if(st)st.style.color='var(--green)';
+  toast('Telegram settings saved','t-success');
+}
+
+async function testTelegram(){
+  var token=(document.getElementById('tgTokenIn')?.value||'').trim();
+  var chatId=(document.getElementById('tgChatIn')?.value||'').trim();
+  if(!token||!chatId){toast('Enter token and chat ID first','t-error');return;}
+  telegramToken=token;
+  telegramChatId=chatId;
+  var st=document.getElementById('tgStatus');
+  if(st){st.textContent='Sending...';st.style.color='var(--text3)';}
+  try{
+    var r=await fetch('https://api.telegram.org/bot'+token+'/sendMessage',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:chatId,text:'🟢 <b>Shimar Portfolio connected!</b>\nAlerts will appear here when triggered.\n\n<i>Buy, sell, stop loss, and take profit signals will be sent in real-time.</i>',parse_mode:'HTML'})
+    });
+    var d=await r.json();
+    if(d.ok){
+      if(st){st.textContent='✓ Test message sent! Check your Telegram.';st.style.color='var(--green)';}
+      await saveTelegramSettings();
+    } else {
+      if(st){st.textContent='Error: '+d.description;st.style.color='var(--red)';}
+    }
+  }catch(e){
+    if(st){st.textContent='Failed: '+e.message;st.style.color='var(--red)';}
+  }
+}
+
 async function handleChangePassword(){
   const p=(document.getElementById('newPassIn')?.value||'').trim();
   const c=(document.getElementById('newPassConfirm')?.value||'').trim();
@@ -4848,6 +5130,11 @@ function renderAnalytics(){
         <div class="kpi-sub">${watchlist.length} on watchlist</div>
       </div>
     </div>
+    <div style="display:flex;gap:6px;margin-bottom:1.25rem;overflow-x:auto">
+      <button id="atab-overview" onclick="switchAnalyticsTab('overview')" style="padding:8px 16px;border-radius:20px;border:1px solid var(--accent);background:var(--accent);color:#fff;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">Overview</button>
+      <button id="atab-history" onclick="switchAnalyticsTab('history')" style="padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">📋 Trade History</button>
+    </div>
+    <div id="analyticsContent">
     <div class="analytics-grid">
       <div class="card widget-full"><div class="card-title">📈 P/L over time ${tipIcon('Estimated portfolio value over time based on current positions')}</div><canvas id="plLine" height="120"></canvas></div>
     </div>
@@ -4860,6 +5147,7 @@ function renderAnalytics(){
     <div class="analytics-grid">
       <div class="card"><div class="card-title">🛡️ Risk distribution</div><div id="riskDiv" style="margin-top:.5rem"></div></div>
       <div class="card"><div class="card-title">📊 Portfolio stats</div><div id="statsDiv"></div></div>
+    </div>
     </div>`;
   setTimeout(()=>buildCharts(m),60);
 }
@@ -4963,6 +5251,26 @@ function renderSettings(){
         </div>
         <div style="margin-top:.75rem">
           <button class="btn danger sm" onclick="logOut()">🔒 Log out of this device</button>
+        </div>
+      </div>
+      <div style="border-top:1px solid var(--border);padding-top:1.5rem;margin-bottom:1.5rem">
+        <div style="font-size:10px;font-weight:800;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.75rem">📱 Telegram Alerts</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:1rem;line-height:1.6">Get real-time buy/sell/stop loss alerts sent directly to your Telegram. <a href="https://t.me/BotFather" target="_blank" style="color:var(--accent2)">Create a bot via @BotFather</a>, then paste your token and chat ID below.</div>
+        <div style="display:grid;gap:8px;margin-bottom:8px">
+          <input type="text" id="tgTokenIn" placeholder="Bot token (e.g. 123456:ABCdef...)" value="${telegramToken||''}" style="padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;outline:none;font-family:inherit"/>
+          <input type="text" id="tgChatIn" placeholder="Chat ID (e.g. 123456789)" value="${telegramChatId||''}" style="padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:13px;outline:none;font-family:inherit"/>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn primary sm" onclick="saveTelegramSettings()">Save Telegram</button>
+          <button class="btn sm" onclick="testTelegram()">Send test message</button>
+        </div>
+        <div id="tgStatus" style="font-size:12px;margin-top:8px;color:var(--text3)"></div>
+        <div style="margin-top:1rem;padding:.75rem;background:rgba(255,255,255,.03);border-radius:8px;font-size:11px;color:var(--text3);line-height:1.7">
+          <strong style="color:var(--text2)">Setup steps:</strong><br>
+          1. Message @BotFather on Telegram → /newbot → copy the token<br>
+          2. Start a chat with your new bot<br>
+          3. Visit: <code style="background:rgba(255,255,255,.06);padding:1px 4px;border-radius:3px">api.telegram.org/bot{TOKEN}/getUpdates</code><br>
+          4. Copy the "id" number from the result → that's your Chat ID
         </div>
       </div>
       <div style="border-top:1px solid var(--border);padding-top:1.5rem">
@@ -5074,6 +5382,64 @@ function openModalWithIdx(idx,type,prefillTicker){
 
 function renderAlertList(){const el=document.getElementById('alertList');if(!el)return;if(!_alerts.length){el.innerHTML='<div class="no-alerts">No alerts — add one below.</div>';return;}el.innerHTML=_alerts.map((a,i)=>`<div class="alert-row-item"><span class="ap">$${a.price.toFixed(2)}</span><span class="al">${a.label?esc(a.label):'<span style="color:var(--text3)">no label</span>'}</span><button class="btn xs danger" onclick="_alerts.splice(${i},1);renderAlertList()">✕</button></div>`).join('');}
 function addAlertModal(){const price=parseFloat(document.getElementById('newP')?.value);const label=(document.getElementById('newL')?.value||'').trim();if(!price||price<=0){toast('Enter a valid price','t-error');return;}_alerts.push({price,label});document.getElementById('newP').value='';document.getElementById('newL').value='';renderAlertList();document.getElementById('newP').focus();}
+function switchAnalyticsTab(tab){
+  ['overview','history'].forEach(function(t){
+    var btn=document.getElementById('atab-'+t);
+    if(btn){
+      btn.style.background=t===tab?'var(--accent)':'transparent';
+      btn.style.color=t===tab?'#fff':'var(--text2)';
+      btn.style.borderColor=t===tab?'var(--accent)':'var(--border)';
+    }
+  });
+  if(tab==='history')renderTradeHistoryTab();
+  else{
+    var el=document.getElementById('analyticsContent');
+    if(el&&!el.querySelector('#plLine'))renderAnalytics();
+  }
+}
+
+async function renderTradeHistoryTab(){
+  var el=document.getElementById('analyticsContent');
+  if(!el)return;
+  el.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text3)">Loading...</div>';
+  var history=await loadTradeHistory();
+  if(!history.length){
+    el.innerHTML='<div class="no-data"><div class="ndi">📋</div><p>No closed trades yet. When you sell a position it will appear here.</p></div>';
+    return;
+  }
+  var totalPL=history.reduce(function(s,t){return s+(t.pl_dollars||0);},0);
+  var wins=history.filter(function(t){return(t.pl_dollars||0)>0;}).length;
+  var winRate=history.length?Math.round(wins/history.length*100):0;
+  var html='<div class="kpi-banner" style="margin-bottom:1.25rem">';
+  html+='<div class="kpi-stat"><div class="kpi-lbl">Closed P/L</div><div class="kpi-val '+(totalPL>=0?'pos':'neg')+'">'+(totalPL>=0?'+':'')+'$'+Math.abs(totalPL).toFixed(2)+'</div></div>';
+  html+='<div class="kpi-stat"><div class="kpi-lbl">Closed Trades</div><div class="kpi-val">'+history.length+'</div></div>';
+  html+='<div class="kpi-stat"><div class="kpi-lbl">Win Rate</div><div class="kpi-val '+(winRate>=50?'pos':'neg')+'">'+winRate+'%</div><div class="kpi-sub">'+wins+' wins · '+(history.length-wins)+' losses</div></div>';
+  html+='</div>';
+  html+='<div class="card">';
+  html+='<div class="card-title">📋 Closed Positions</div>';
+  html+='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">';
+  html+='<thead><tr style="color:var(--text3);font-weight:700;font-size:10px;text-transform:uppercase">';
+  html+='<th style="text-align:left;padding:6px 8px">Ticker</th><th style="text-align:right;padding:6px 8px">Shares</th><th style="text-align:right;padding:6px 8px">Avg Buy</th><th style="text-align:right;padding:6px 8px">Sold At</th><th style="text-align:right;padding:6px 8px">P/L $</th><th style="text-align:right;padding:6px 8px">P/L %</th><th style="text-align:left;padding:6px 8px">Date</th><th style="text-align:left;padding:6px 8px">Reason</th>';
+  html+='</tr></thead><tbody>';
+  history.forEach(function(t){
+    var pl=t.pl_dollars||0;
+    var plPct=(t.pl_pct||0)*100;
+    var color=pl>=0?'var(--green)':'var(--red)';
+    html+='<tr style="border-top:1px solid var(--border)">';
+    html+='<td style="padding:8px;font-weight:800">'+esc(t.ticker||'—')+'</td>';
+    html+='<td style="padding:8px;text-align:right;color:var(--text2)">'+(t.shares_sold||0).toFixed(2)+'</td>';
+    html+='<td style="padding:8px;text-align:right;color:var(--text2)">$'+(t.avg_buy_price||0).toFixed(2)+'</td>';
+    html+='<td style="padding:8px;text-align:right;color:var(--text2)">$'+(t.sell_price||0).toFixed(2)+'</td>';
+    html+='<td style="padding:8px;text-align:right;font-weight:700;color:'+color+'">'+(pl>=0?'+':'')+'$'+Math.abs(pl).toFixed(2)+'</td>';
+    html+='<td style="padding:8px;text-align:right;font-weight:700;color:'+color+'">'+(pl>=0?'+':'')+plPct.toFixed(1)+'%</td>';
+    html+='<td style="padding:8px;color:var(--text3);font-size:11px">'+(t.sold_at?new Date(t.sold_at).toLocaleDateString():'—')+'</td>';
+    html+='<td style="padding:8px;color:var(--text3);font-size:11px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(t.reason||'—')+'</td>';
+    html+='</tr>';
+  });
+  html+='</tbody></table></div></div>';
+  el.innerHTML=html;
+}
+
 function removeTriggerAlert(btn){var k=btn.getAttribute('data-key');if(k&&triggerAlerts[k])delete triggerAlerts[k];renderAlertsPage();}
 function closeModal(){document.getElementById('modalWrap').innerHTML='';document.getElementById('ticker-dd-drop')?.remove();}
 function closeBg(e){if(e.target.classList.contains('modal-bg'))closeModal();}
