@@ -693,6 +693,7 @@ tr.leg-row.hidden{display:none}
 <script>
 // ── CONFIG ──
 const SB='https://auretlkwhsloupoynsvi.supabase.co';
+const SUPABASE_URL=SB; // alias
 const SK='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1cmV0bGt3aHNsb3Vwb3luc3ZpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjU2MjYsImV4cCI6MjA5MDgwMTYyNn0.nPDHUoEwu9ycq38tDhKe5MB75OAmmJBma8fkQtojnoI';
 const H={'Content-Type':'application/json','apikey':SK,'Authorization':'Bearer '+SK,'Prefer':'return=representation'};
 const T={pos:SB+'/rest/v1/positions',watch:SB+'/rest/v1/watchlist',notif:SB+'/rest/v1/notifications',prices:SB+'/rest/v1/price_cache',settings:SB+'/rest/v1/app_settings',fired:SB+'/rest/v1/alert_fired_log',notes:SB+'/rest/v1/stock_notes',learn:SB+'/rest/v1/learn_progress'};
@@ -3236,25 +3237,47 @@ const AUTH_EXPIRY_KEY='portfolio_auth_expiry';
 const AUTH_DAYS=30;
 
 async function checkAuth(){
-  // Check device token first
+  // Timeout wrapper so a Supabase failure never hangs the app
+  function withTimeout(promise,ms){
+    return Promise.race([promise,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),ms))]);
+  }
+
+  // Check device token first — local check, instant
   try{
     const token=localStorage.getItem(AUTH_TOKEN_KEY);
     const expiry=localStorage.getItem(AUTH_EXPIRY_KEY);
     if(token&&expiry&&Date.now()<parseInt(expiry)){
-      // Verify token matches stored
-      const storedToken=await getSetting('auth_device_token');
-      if(storedToken&&storedToken===token)return true;
+      // Verify token matches Supabase (with 4s timeout)
+      try{
+        const storedToken=await withTimeout(getSetting('auth_device_token'),4000);
+        if(storedToken&&storedToken===token){
+          // Token valid — boot immediately
+          await bootApp();
+          return true;
+        }
+      }catch(e){
+        // Supabase timeout or error — if we have a local token, trust it and boot
+        console.log('Auth token check failed, using local token:',e.message);
+        await bootApp();
+        return true;
+      }
     }
   }catch(e){}
 
-  // Check if password has been set
-  const hasPass=await getSetting('auth_password_hash');
-  const authScreen=document.getElementById('authScreen');
+  // Check if password has been set (with 4s timeout)
+  let hasPass=null;
+  try{
+    hasPass=await withTimeout(getSetting('auth_password_hash'),4000);
+  }catch(e){
+    // Supabase unreachable — skip auth and boot directly
+    console.log('Auth check timed out, booting without auth:',e.message);
+    await bootApp();
+    return true;
+  }
+
   if(!hasPass){
-    // First launch — setup mode
     showAuthScreen('setup');
   } else {
-    // Normal login
     showAuthScreen('login');
   }
   return false;
@@ -3268,6 +3291,8 @@ function showAuthScreen(mode){
   const rememberWrap=document.getElementById('authRememberWrap');
   const hint=document.getElementById('authHint');
   screen.style.display='flex';
+  // Hide the loading screen so auth screen is visible
+  document.getElementById('loadScreen').style.display='none';
   if(mode==='setup'){
     sub.textContent='Welcome! Create a password to secure your portfolio.';
     btn.textContent='Create Password';
