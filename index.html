@@ -5179,11 +5179,17 @@ function getISTDateStr() {
 }
 function isPickerWindow() {
   var h = getISTHour();
-  return h >= 19.0 && h < 19.25; // 7:00–7:15 PM IST
+  // Pick stocks: 7:00 PM to 8:30 PM IST
+  return h >= 19.0 && h < 20.5;
 }
 function isEngineWindow() {
   var h = getISTHour();
-  return h >= 20.0 && h < 21.0; // 8:00–9:00 PM IST
+  // Engine: 1hr before market open to 1hr after market close
+  // EDT (summer): Opens 7:00 PM, Closes 1:30 AM IST → Engine: 6:00 PM – 2:30 AM
+  // EST (winter): Opens 7:30 PM, Closes 2:00 AM IST → Engine: 6:30 PM – 3:00 AM
+  // Cover both: 6:00 PM IST to 3:00 AM IST (next day)
+  // h wraps past midnight so check h>=18 OR h<3
+  return h >= 18.0 || h < 3.0;
 }
 function shouldResetToday() {
   var today = getISTDateStr();
@@ -5302,10 +5308,22 @@ async function fetchDipCandles(ticker) {
   try {
     // Get today's candles from market open
     var now = Math.floor(Date.now() / 1000);
-    // US market open: 9:30 AM ET = 2:30 PM UTC = 8:00 PM IST
+    // US market open: 9:30 AM ET
+    // ET = UTC-5 (EST, Nov-Mar) or UTC-4 (EDT, Mar-Nov)
+    // Detect DST: second Sunday of March to first Sunday of November
     var today = new Date();
+    var year = today.getUTCFullYear();
+    // Second Sunday of March
+    var marchStart = new Date(Date.UTC(year, 2, 1));
+    marchStart.setUTCDate(8 + (7 - marchStart.getUTCDay()) % 7);
+    // First Sunday of November
+    var novEnd = new Date(Date.UTC(year, 10, 1));
+    novEnd.setUTCDate(1 + (7 - novEnd.getUTCDay()) % 7);
+    var isDST = today >= marchStart && today < novEnd;
+    var etOffsetHours = isDST ? 4 : 5; // UTC-4 EDT or UTC-5 EST
+    var marketOpenUTCHour = 9 + etOffsetHours; // 9:30 AM ET in UTC
     var marketOpen = new Date(today);
-    marketOpen.setUTCHours(13, 30, 0, 0); // 9:30 AM ET = 13:30 UTC
+    marketOpen.setUTCHours(marketOpenUTCHour, 30, 0, 0);
     var fromTs = Math.floor(marketOpen.getTime() / 1000);
     // If before market open today, use yesterday
     if (fromTs > now) fromTs -= 86400;
@@ -5491,7 +5509,7 @@ function renderDipEngineRoot() {
      'background:var(--bg3);color:var(--text3)') + '">' +
     (isActive ? '🟢 LIVE' : isPicker ? '⏰ PICKER WINDOW' : '⏸ STANDBY') + '</div>';
   html += '</div>';
-  html += '<div style="font-size:12px;color:var(--text3);margin-top:2px">Smart Dip Entry Engine · Score ≥ 7 = Safe Entry · 1-min candles</div>';
+  html += '<div style="font-size:12px;color:var(--text3);margin-top:2px">Smart Dip Entry Engine · Score ≥ 7 = Safe Entry · 1-min candles · Active 6PM–3AM IST</div>';
   html += '</div>';
   html += '<div style="display:flex;gap:6px;align-items:center">';
   if (dipEngineActive) {
@@ -5509,7 +5527,7 @@ function renderDipEngineRoot() {
   var istStr = istTime.toUTCString().slice(17, 22) + ' IST';
   html += '<span style="font-size:13px;color:var(--text2)">🕐 ' + istStr + '</span>';
   html += '<span style="color:var(--border)">|</span>';
-  html += '<span style="font-size:12px;color:var(--text3)">📍 Pick stocks: 7:00–7:15 PM IST &nbsp;·&nbsp; ⚡ Engine active: 8:00–9:00 PM IST &nbsp;·&nbsp; 🔄 Resets: 4:00 AM IST (after US close)</span>';
+  html += '<span style="font-size:12px;color:var(--text3)">📍 Pick stocks: 7:00–8:30 PM IST &nbsp;·&nbsp; ⚡ Engine: 6:00 PM – 3:00 AM IST (1hr pre/post market) &nbsp;·&nbsp; 🔄 Resets: 4:00 AM IST (after US close)</span>';
   html += '</div>';
 
   // ── STOCK PICKER ──
