@@ -5178,10 +5178,13 @@ function getISTDateStr() {
   return ist.toISOString().slice(0, 10);
 }
 function isPickerWindow() {
-  return true; // Always open — pick stocks any time
+  var h = getISTHour();
+  return h >= 19.0 && h < 20.5; // 7:00–8:30 PM IST
 }
 function isEngineWindow() {
-  return true; // Always active — 24/7
+  var h = getISTHour();
+  // 6:00 PM – 3:00 AM IST (1hr before open to 1hr after close, covers EDT+EST)
+  return h >= 18.0 || h < 3.0;
 }
 function shouldResetToday() {
   var today = getISTDateStr();
@@ -5298,63 +5301,82 @@ function calcDipScore(candles, rsi, vwap) {
 async function fetchDipCandles(ticker) {
   if (!apiKey) return null;
   try {
-    // Get today's candles from market open
     var now = Math.floor(Date.now() / 1000);
-    // US market open: 9:30 AM ET
-    // ET = UTC-5 (EST, Nov-Mar) or UTC-4 (EDT, Mar-Nov)
-    // Detect DST: second Sunday of March to first Sunday of November
-    var today = new Date();
-    var year = today.getUTCFullYear();
-    // Second Sunday of March
+
+    // Step 1: Fetch live quote (always works on free tier)
+    var qr = await fetch('https://finnhub.io/api/v1/quote?symbol=' + encodeURIComponent(ticker) + '&token=' + apiKey);
+    var quote = await qr.json();
+    var hasQuote = quote && quote.c > 0;
+
+    // Step 2: Try daily candles (60 days — always works on free tier)
+    var from60d = now - 60 * 86400;
+    var cr = await fetch('https://finnhub.io/api/v1/stock/candle?symbol=' + encodeURIComponent(ticker) + '&resolution=D&from=' + from60d + '&to=' + now + '&token=' + apiKey);
+    var daily = await cr.json();
+    var hasDaily = daily && daily.s === 'ok' && daily.c && daily.c.length >= 5;
+
+    // Step 3: Try intraday — 60-min first (works for most US stocks), then 5-min
+    var intradayCandles = null;
+    var intradayRes = 'daily';
+    
+    // Detect market open time
+    var todayDate = new Date();
+    var year = todayDate.getUTCFullYear();
     var marchStart = new Date(Date.UTC(year, 2, 1));
     marchStart.setUTCDate(8 + (7 - marchStart.getUTCDay()) % 7);
-    // First Sunday of November
     var novEnd = new Date(Date.UTC(year, 10, 1));
     novEnd.setUTCDate(1 + (7 - novEnd.getUTCDay()) % 7);
-    var isDST = today >= marchStart && today < novEnd;
-    var etOffsetHours = isDST ? 4 : 5; // UTC-4 EDT or UTC-5 EST
-    var marketOpenUTCHour = 9 + etOffsetHours; // 9:30 AM ET in UTC
-    var marketOpen = new Date(today);
-    marketOpen.setUTCHours(marketOpenUTCHour, 30, 0, 0);
-    var fromTs = Math.floor(marketOpen.getTime() / 1000);
-    // If before market open today, use yesterday
-    if (fromTs > now) fromTs -= 86400;
+    var isDST = todayDate >= marchStart && todayDate < novEnd;
+    var marketOpenUTC = new Date(todayDate);
+    marketOpenUTC.setUTCHours(9 + (isDST ? 4 : 5), 30, 0, 0);
+    var fromToday = Math.floor(marketOpenUTC.getTime() / 1000);
+    if (fromToday > now) fromToday -= 86400;
 
-    // Try 1-min candles first, fallback to 5-min if no data
-    var url1 = 'https://finnhub.io/api/v1/stock/candle?symbol=' +
-      encodeURIComponent(ticker) +
-      '&resolution=1&from=' + fromTs + '&to=' + now + '&token=' + apiKey;
-    var r = await fetch(url1);
-    var d = await r.json();
-    
-    // If 1-min failed, try 5-min with wider window (2 days back)
-    if (!d || d.s !== 'ok' || !d.c || d.c.length < 5) {
-      var from2 = now - 2 * 86400;
-      var url2 = 'https://finnhub.io/api/v1/stock/candle?symbol=' +
-        encodeURIComponent(ticker) +
-        '&resolution=5&from=' + from2 + '&to=' + now + '&token=' + apiKey;
-      r = await fetch(url2);
-      d = await r.json();
-    }
-    
-    // Still nothing — try daily candles for at least RSI
-    if (!d || d.s !== 'ok' || !d.c || d.c.length < 5) {
-      var from3 = now - 60 * 86400;
-      var url3 = 'https://finnhub.io/api/v1/stock/candle?symbol=' +
-        encodeURIComponent(ticker) +
-        '&resolution=D&from=' + from3 + '&to=' + now + '&token=' + apiKey;
-      r = await fetch(url3);
-      d = await r.json();
-    }
-    
-    if (!d || d.s !== 'ok' || !d.c || d.c.length < 5) {
-      console.log('DipEngine: no candle data for', ticker, '- status:', d && d.s);
-      return null;
+    // Try 60-min intraday (most reliable on free tier)
+    try {
+      var ir = await fetch('https://finnhub.io/api/v1/stock/candle?symbol=' + encodeURIComponent(ticker) + '&resolution=60&from=' + (now - 7*86400) + '&to=' + now + '&token=' + apiKey);
+      var id60 = await ir.json();
+      if (id60 && id60.s === 'ok' && id60.c && id60.c.length >= 3) {
+        intradayCandles = id60;
+        intradayRes = '60min';
+      }
+    } catch(e) {}
+
+    // Try 5-min if 60-min failed
+    if (!intradayCandles) {
+      try {
+        var ir2 = await fetch('https://finnhub.io/api/v1/stock/candle?symbol=' + encodeURIComponent(ticker) + '&resolution=5&from=' + fromToday + '&to=' + now + '&token=' + apiKey);
+        var id5 = await ir2.json();
+        if (id5 && id5.s === 'ok' && id5.c && id5.c.length >= 3) {
+          intradayCandles = id5;
+          intradayRes = '5min';
+        }
+      } catch(e) {}
     }
 
-    return d.t.map(function(_, i) {
-      return { t: d.t[i], o: d.o[i], h: d.h[i], l: d.l[i], c: d.c[i], v: d.v[i] };
-    });
+    console.log('DipEngine', ticker, '| quote:', hasQuote ? quote.c : 'N/A', '| daily:', hasDaily ? daily.c.length + ' bars' : 'N/A', '| intraday:', intradayRes);
+
+    // Build synthetic candle set: use daily for RSI, intraday/quote for VWAP
+    if (!hasDaily && !hasQuote) return null;
+
+    // If we have intraday candles use them; otherwise build from daily + today quote
+    var candles = null;
+    if (intradayCandles && intradayCandles.c.length >= 3) {
+      candles = intradayCandles.t.map(function(_, i) {
+        return { t: intradayCandles.t[i], o: intradayCandles.o[i], h: intradayCandles.h[i], l: intradayCandles.l[i], c: intradayCandles.c[i], v: intradayCandles.v[i] };
+      });
+    } else if (hasDaily) {
+      candles = daily.t.map(function(_, i) {
+        return { t: daily.t[i], o: daily.o[i], h: daily.h[i], l: daily.l[i], c: daily.c[i], v: daily.v[i] };
+      });
+      // Append today's quote as last candle if market is open
+      if (hasQuote && quote.o > 0) {
+        candles.push({ t: now, o: quote.o, h: quote.h, l: quote.l, c: quote.c, v: 1000000 });
+      }
+    }
+
+    if (!candles || candles.length < 5) return null;
+    return candles;
+
   } catch (e) {
     console.log('DipEngine fetch error', ticker, e);
     return null;
