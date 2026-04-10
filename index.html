@@ -5159,7 +5159,7 @@ function renderTISettings(el){
 // ══════════════════════════════════════════════════════
 
 // ── STATE ──
-var dipStocks = ['STRIVE', 'ASST']; // STRIVE is primary BTC-proxy; ASST included; + up to 4 user picks
+var dipStocks = ['ASST']; // ASST = Strive Asset Mgmt (BTC proxy) - add more tickers via picker
 var dipData = {}; // ticker -> {candles, rsi, vwap, score, signal, price}
 var dipTimer = null;
 var dipSessionDate = null; // Track which day stocks were picked
@@ -5365,7 +5365,14 @@ async function fetchDipCandles(ticker) {
 async function processDipStock(ticker) {
   var candles = await fetchDipCandles(ticker);
   if (!candles || candles.length < 6) {
-    dipData[ticker] = { error: true, ticker: ticker, price: 0 };
+    // Still try to get a live quote price even if no candles
+    var quotePrice = 0, quoteDC = 0;
+    try {
+      var qr = await fetch('https://finnhub.io/api/v1/quote?symbol=' + encodeURIComponent(ticker) + '&token=' + apiKey);
+      var qd = await qr.json();
+      if (qd && qd.c > 0) { quotePrice = qd.c; quoteDC = qd.dp || 0; }
+    } catch(e) {}
+    dipData[ticker] = { error: true, ticker: ticker, price: quotePrice, dayChange: quoteDC };
     return;
   }
 
@@ -5475,7 +5482,7 @@ function checkDipReset() {
   var isResetWindow = istH >= 4.0 && istH < 4.1; // 4:00–4:06 AM IST
   if (isResetWindow && dipSessionDate !== 'reset_' + today) {
     dipSessionDate = 'reset_' + today;
-    dipStocks = ['STRIVE', 'ASST'];
+    dipStocks = ['ASST'];
     dipData = {};
     dipSignalFired = {};
     stopDipEngine();
@@ -5545,12 +5552,12 @@ function renderDipEngineRoot() {
 
   // ── STOCK PICKER ──
   html += '<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:1rem">';
-  html += '<div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.75rem">Stocks to watch today <span style="color:var(--text2);font-weight:400">(STRIVE + ASST always · add up to 4 more)</span></div>';
+  html += '<div style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.75rem">Stocks to watch today <span style="color:var(--text2);font-weight:400">(ASST always included · add up to 5 more)</span></div>';
 
   // Current stocks as removable chips
   html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.75rem">';
   dipStocks.forEach(function(t) {
-    var isFixed = t === 'STRIVE' || t === 'ASST';
+    var isFixed = t === 'ASST';
     html += '<div style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;' +
       (isFixed ? 'background:rgba(124,111,255,.15);border:1px solid rgba(124,111,255,.3)' :
        'background:var(--bg3);border:1px solid var(--border)') + '">';
@@ -5566,11 +5573,15 @@ function renderDipEngineRoot() {
 
   // Add stock input
   if (dipStocks.length < 6) {
+    html += '<div style="position:relative">';
     html += '<div class="picker-stock-input">';
-    html += '<input id="dipTickerIn" placeholder="Add ticker (e.g. NVDA)" maxlength="6" ' +
-      'onkeydown="if(event.key===\'Enter\')addDipStock()" ' +
+    html += '<input id="dipTickerIn" placeholder="Type ticker (e.g. NVDA, COIN) or pick from list" maxlength="10" autocomplete="off" ' +
+      'oninput="dipTickerSearch(this.value)" ' +
+      'onkeydown="dipTickerKeydown(event)" ' +
       'style="flex:1;padding:9px 14px;border-radius:9px;border:1px solid var(--border);background:var(--bg3);color:var(--text);font-size:14px;outline:none;font-family:inherit;text-transform:uppercase"/>';
     html += '<button onclick="addDipStock()" class="btn primary sm">+ Add</button>';
+    html += '</div>';
+    html += '<div id="dipTickerDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;z-index:999;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.5);max-height:280px;overflow-y:auto"></div>';
     html += '</div>';
   }
   html += '</div>';
@@ -5633,8 +5644,8 @@ function renderDipPanel(ticker) {
         '<div style="font-size:11px;color:' + (dc>=0?'var(--green)':'var(--red)') + '">' + (dc>=0?'+':'') + (dc||0).toFixed(2) + '%</div></div>' : '') +
       '</div>' +
       '<div style="padding:.75rem;background:var(--bg3);border-radius:8px;color:var(--text3);font-size:12px">' +
-      '⏳ Waiting for intraday candle data...<br>' +
-      '<span style="font-size:11px">US market open: ~7:00–7:30 PM IST · Candles available during market hours</span>' +
+      (isEngineWindow() ? '📡 Fetching live data...<br><span style="font-size:11px">If this persists, check that ' + ticker + ' is a valid Finnhub ticker</span>' :
+       '⏳ Waiting for market to open<br><span style="font-size:11px">US market: ~7:00–7:30 PM IST · Candles available during trading hours</span>') +
       '</div>' +
       '</div>';
   }
@@ -5826,7 +5837,7 @@ function updateDipChips() {
   if (!chipsEl) { renderDipEngineRoot(); return; }
   var html = '';
   dipStocks.forEach(function(t) {
-    var isFixed = t === 'STRIVE' || t === 'ASST';
+    var isFixed = t === 'ASST';
     html += '<div style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;' +
       (isFixed ? 'background:rgba(124,111,255,.15);border:1px solid rgba(124,111,255,.3)' :
        'background:var(--bg3);border:1px solid var(--border)') + '">';
