@@ -5214,13 +5214,17 @@ function calcDipRSI(closes, period) {
 // ── VWAP CALCULATION ──
 function calcDipVWAP(candles) {
   // VWAP = sum(typical_price * volume) / sum(volume)
-  // Only use candles from today (market open)
+  // For daily candles: use last 5 days as approximation
+  // For intraday: use all candles from today
+  if (!candles || !candles.length) return null;
   var cumTPV = 0, cumVol = 0;
-  for (var i = 0; i < candles.length; i++) {
+  // Use last 5 candles for VWAP approximation (avoids using 60 days of history)
+  var start = Math.max(0, candles.length - 5);
+  for (var i = start; i < candles.length; i++) {
     var c = candles[i];
     var tp = (c.h + c.l + c.c) / 3;
-    cumTPV += tp * c.v;
-    cumVol += c.v;
+    cumTPV += tp * (c.v || 1000000);
+    cumVol += (c.v || 1000000);
   }
   return cumVol > 0 ? cumTPV / cumVol : null;
 }
@@ -5299,7 +5303,15 @@ function calcDipScore(candles, rsi, vwap) {
 
 // ── FETCH INTRADAY CANDLES (1-min) ──
 async function fetchDipCandles(ticker) {
-  if (!apiKey) return null;
+  // Wait for API key if not loaded yet (bootApp loads it async)
+  if (!apiKey) {
+    // Try localStorage directly as fallback
+    try { apiKey = localStorage.getItem('ts_key') || ''; } catch(e) {}
+    if (!apiKey) {
+      console.log('DipEngine: no API key for', ticker);
+      return null;
+    }
+  }
   try {
     var now = Math.floor(Date.now() / 1000);
 
@@ -5353,7 +5365,7 @@ async function fetchDipCandles(ticker) {
       } catch(e) {}
     }
 
-    console.log('DipEngine', ticker, '| quote:', hasQuote ? quote.c : 'N/A', '| daily:', hasDaily ? daily.c.length + ' bars' : 'N/A', '| intraday:', intradayRes);
+    console.log('DipEngine', ticker, '| quote:', hasQuote ? '$'+quote.c : 'FAILED ('+JSON.stringify(quote)+')', '| daily:', hasDaily ? daily.c.length+' bars' : 'FAILED (s='+( daily&&daily.s)+')', '| intraday:', intradayRes);
 
     // Build synthetic candle set: use daily for RSI, intraday/quote for VWAP
     if (!hasDaily && !hasQuote) return null;
