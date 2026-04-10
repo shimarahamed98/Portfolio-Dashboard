@@ -1249,7 +1249,7 @@ async function refreshPrices(){
   const btn=document.getElementById('refreshBtn');btn.textContent='⟳ ...';btn.disabled=true;
   const prevTotal=calcM().val;
   const tickers=[...new Set([...positions.map(p=>p.ticker),...watchlist.map(w=>w.ticker)])];
-  for(const t of tickers){const d=await fetchP(t);if(d)priceCache[t]=d;await new Promise(r=>setTimeout(r,220));}
+  for(const t of tickers){const d=await fetchP(t);if(d){priceCache[t]=d;if(typeof storeDipPrice==='function')storeDipPrice(t,d.current,d.high,d.low,d.open,1000000);}await new Promise(r=>setTimeout(r,220));}
   await savePrices();
   const newTotal=calcM().val;const pct=prevTotal?(newTotal-prevTotal)/prevTotal*100:0;
   btn.textContent='⟳';btn.disabled=false;
@@ -5302,84 +5302,85 @@ function calcDipScore(candles, rsi, vwap) {
 }
 
 // ── FETCH INTRADAY CANDLES (1-min) ──
+// ── PRICE HISTORY STORE (for RSI calculation without extra API calls) ──
+var dipPriceHistory = {}; // ticker -> [{price, high, low, open, volume, time}]
+var DIP_HISTORY_MAX = 50; // keep last 50 price snapshots
+
+function storeDipPrice(ticker, price, high, low, open, volume) {
+  if (!ticker || !price || price <= 0) return;
+  if (!dipPriceHistory[ticker]) dipPriceHistory[ticker] = [];
+  var hist = dipPriceHistory[ticker];
+  // Only store if price changed or 5+ min since last snapshot
+  var last = hist[hist.length - 1];
+  var now = Date.now();
+  if (last && last.price === price && (now - last.time) < 300000) return;
+  hist.push({ price: price, high: high||price, low: low||price, open: open||price, volume: volume||1000000, time: now });
+  if (hist.length > DIP_HISTORY_MAX) hist.shift();
+}
+
 async function fetchDipCandles(ticker) {
   try {
-    // Use Yahoo Finance — free, no API key, no rate limits for basic data
-    // Endpoint: 3 months of daily candles + today's quote
-    var yahooUrl = 'https://query1.finance.yahoo.com/v8/finance/chart/' +
-      encodeURIComponent(ticker) +
-      '?interval=1d&range=3mo&includePrePost=false';
-
-    var yr = await fetch(yahooUrl);
-    var yd = await yr.json();
-
-    var candles = null;
-    if (yd && yd.chart && yd.chart.result && yd.chart.result[0]) {
-      var result = yd.chart.result[0];
-      var timestamps = result.timestamp;
-      var ohlcv = result.indicators && result.indicators.quote && result.indicators.quote[0];
-      if (timestamps && ohlcv && ohlcv.close && ohlcv.close.length >= 5) {
-        candles = [];
-        for (var i = 0; i < timestamps.length; i++) {
-          if (ohlcv.close[i] !== null && ohlcv.close[i] !== undefined) {
-            candles.push({
-              t: timestamps[i],
-              o: ohlcv.open[i] || ohlcv.close[i],
-              h: ohlcv.high[i] || ohlcv.close[i],
-              l: ohlcv.low[i] || ohlcv.close[i],
-              c: ohlcv.close[i],
-              v: ohlcv.volume[i] || 1000000
-            });
-          }
-        }
-        console.log('DipEngine', ticker, '| Yahoo Finance:', candles.length, 'daily bars');
-      }
+    // Step 1: Get live quote from Finnhub (rate-limited but works)
+    var quote = null;
+    if (apiKey) {
+      try {
+        var qr = await fetch('https://finnhub.io/api/v1/quote?symbol=' + encodeURIComponent(ticker) + '&token=' + apiKey);
+        quote = await qr.json();
+      } catch(e) {}
     }
 
-    // If Yahoo fails, try Finnhub quote only (for price display at minimum)
-    if (!candles || candles.length < 5) {
-      if (apiKey) {
-        try {
-          var qr = await fetch('https://finnhub.io/api/v1/quote?symbol=' + encodeURIComponent(ticker) + '&token=' + apiKey);
-          var q = await qr.json();
-          if (q && q.c > 0) {
-            // Build minimal candle from quote for display only
-            candles = [{ t: Math.floor(Date.now()/1000), o: q.o||q.c, h: q.h||q.c, l: q.l||q.c, c: q.c, v: 1000000 }];
-            console.log('DipEngine', ticker, '| Finnhub quote fallback: $' + q.c);
-          }
-        } catch(e) {}
-      }
-    }
+    // Also check priceCache (populated by refreshPrices)
+    var cached = priceCache[ticker];
+    var livePrice = (quote && quote.c > 0) ? quote.c : (cached && cached.current ? cached.current : 0);
+    var liveHigh  = (quote && quote.h > 0) ? quote.h  : (cached && cached.high   ? cached.high   : livePrice);
+    var liveLow   = (quote && quote.l > 0) ? quote.l  : (cached && cached.low    ? cached.low    : livePrice);
+    var liveOpen  = (quote && quote.o > 0) ? quote.o  : livePrice;
 
-    if (!candles || candles.length < 1) {
-      console.log('DipEngine', ticker, '| all sources failed');
+    if (!livePrice || livePrice <= 0) {
+      console.log('DipEngine', ticker, '| no price available');
       return null;
     }
 
+    // Step 2: Store this price in history
+    storeDipPrice(ticker, livePrice, liveHigh, liveLow, liveOpen, 1000000);
+
+    // Step 3: Build candle array from stored history
+    var hist = dipPriceHistory[ticker] || [];
+
+    // We need at least 2 points for anything meaningful
+    if (hist.length < 2) {
+      // Return single candle — enough to show price, not RSI yet
+      console.log('DipEngine', ticker, '| collecting price history... (' + hist.length + ' points, need 15+)');
+      return [{ t: Math.floor(Date.now()/1000), o: liveOpen, h: liveHigh, l: liveLow, c: livePrice, v: 1000000 }];
+    }
+
+    // Convert history to candle format
+    var candles = hist.map(function(h) {
+      return { t: Math.floor(h.time/1000), o: h.open, h: h.high, l: h.low, c: h.price, v: h.volume };
+    });
+
+    console.log('DipEngine', ticker, '| price history:', hist.length, 'points | RSI available:', hist.length >= 15);
     return candles;
+
   } catch (e) {
     console.log('DipEngine fetch error', ticker, e.message);
     return null;
   }
 }
 
-// ── PROCESS ONE STOCK ──
+
 async function processDipStock(ticker) {
   var candles = await fetchDipCandles(ticker);
-  if (!candles || candles.length < 6) {
-    // Still try to get a live quote price even if no candles
-    var quotePrice = 0, quoteDC = 0;
-    try {
-      var qr = await fetch('https://finnhub.io/api/v1/quote?symbol=' + encodeURIComponent(ticker) + '&token=' + apiKey);
-      var qd = await qr.json();
-      if (qd && qd.c > 0) { quotePrice = qd.c; quoteDC = qd.dp || 0; }
-    } catch(e) {}
-    dipData[ticker] = { error: true, ticker: ticker, price: quotePrice, dayChange: quoteDC };
+  if (!candles || candles.length < 1) {
+    dipData[ticker] = { error: true, ticker: ticker, price: 0, dayChange: 0 };
     return;
   }
+  // If we have price but not enough history for RSI yet, show partial data
+  var hasFullData = candles.length >= 15;
 
   var closes = candles.map(function(c) { return c.c; });
   var rsi = closes.length >= 15 ? calcDipRSI(closes, 14) : null;
+  var rsiStatus = closes.length < 15 ? '(' + closes.length + '/15 readings collected)' : null;
   var vwap = calcDipVWAP(candles);
   var scoreResult = calcDipScore(candles, rsi, vwap);
   var last = candles[candles.length - 1];
@@ -5400,6 +5401,7 @@ async function processDipStock(ticker) {
     price: price,
     dayChange: dayChange,
     rsi: rsi,
+    rsiStatus: rsiStatus,
     vwap: vwap,
     score: scoreResult.score,
     conditions: scoreResult.conditions,
@@ -5688,12 +5690,18 @@ function renderDipPanel(ticker) {
   html += '</div>';
 
   // RSI gauge
+  if (d.rsiStatus) {
+    html += '<div style="padding:6px 10px;background:var(--bg3);border-radius:8px;font-size:11px;color:var(--text3);margin-bottom:.5rem">';
+    html += '📊 Building RSI... <strong>' + d.rsiStatus + '</strong><br>';
+    html += '<span style="font-size:10px">Refreshes every 60s — RSI ready after 15 price readings</span>';
+    html += '</div>';
+  }
   if (rsi !== null) {
     var rsiColor = rsi < 30 ? '#22c55e' : rsi < 40 ? '#f59e0b' : rsi > 70 ? '#ef4444' : 'var(--text2)';
     var rsiLabel = rsi < 30 ? 'Oversold ✓' : rsi < 40 ? 'Near oversold' : rsi > 70 ? 'Overbought' : 'Neutral';
     html += '<div style="margin-bottom:.75rem">';
     html += '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">';
-    html += '<span style="color:var(--text3);font-weight:700">RSI(14) · 1min</span>';
+    html += '<span style="color:var(--text3);font-weight:700">RSI(14)</span>';
     html += '<span style="font-weight:800;color:' + rsiColor + '">' + rsi.toFixed(1) + ' — ' + rsiLabel + '</span>';
     html += '</div>';
     html += '<div class="dip-rsi-bar"><div class="dip-rsi-needle" style="left:' + Math.min(98, Math.max(2, rsi)) + '%"></div></div>';
