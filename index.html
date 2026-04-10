@@ -5178,18 +5178,10 @@ function getISTDateStr() {
   return ist.toISOString().slice(0, 10);
 }
 function isPickerWindow() {
-  var h = getISTHour();
-  // Pick stocks: 7:00 PM to 8:30 PM IST
-  return h >= 19.0 && h < 20.5;
+  return true; // Always open — pick stocks any time
 }
 function isEngineWindow() {
-  var h = getISTHour();
-  // Engine: 1hr before market open to 1hr after market close
-  // EDT (summer): Opens 7:00 PM, Closes 1:30 AM IST → Engine: 6:00 PM – 2:30 AM
-  // EST (winter): Opens 7:30 PM, Closes 2:00 AM IST → Engine: 6:30 PM – 3:00 AM
-  // Cover both: 6:00 PM IST to 3:00 AM IST (next day)
-  // h wraps past midnight so check h>=18 OR h<3
-  return h >= 18.0 || h < 3.0;
+  return true; // Always active — 24/7
 }
 function shouldResetToday() {
   var today = getISTDateStr();
@@ -5328,14 +5320,37 @@ async function fetchDipCandles(ticker) {
     // If before market open today, use yesterday
     if (fromTs > now) fromTs -= 86400;
 
-    var r = await fetch(
-      'https://finnhub.io/api/v1/stock/candle?symbol=' +
+    // Try 1-min candles first, fallback to 5-min if no data
+    var url1 = 'https://finnhub.io/api/v1/stock/candle?symbol=' +
       encodeURIComponent(ticker) +
-      '&resolution=1&from=' + fromTs + '&to=' + now +
-      '&token=' + apiKey
-    );
+      '&resolution=1&from=' + fromTs + '&to=' + now + '&token=' + apiKey;
+    var r = await fetch(url1);
     var d = await r.json();
-    if (!d || d.s !== 'ok' || !d.c || d.c.length < 5) return null;
+    
+    // If 1-min failed, try 5-min with wider window (2 days back)
+    if (!d || d.s !== 'ok' || !d.c || d.c.length < 5) {
+      var from2 = now - 2 * 86400;
+      var url2 = 'https://finnhub.io/api/v1/stock/candle?symbol=' +
+        encodeURIComponent(ticker) +
+        '&resolution=5&from=' + from2 + '&to=' + now + '&token=' + apiKey;
+      r = await fetch(url2);
+      d = await r.json();
+    }
+    
+    // Still nothing — try daily candles for at least RSI
+    if (!d || d.s !== 'ok' || !d.c || d.c.length < 5) {
+      var from3 = now - 60 * 86400;
+      var url3 = 'https://finnhub.io/api/v1/stock/candle?symbol=' +
+        encodeURIComponent(ticker) +
+        '&resolution=D&from=' + from3 + '&to=' + now + '&token=' + apiKey;
+      r = await fetch(url3);
+      d = await r.json();
+    }
+    
+    if (!d || d.s !== 'ok' || !d.c || d.c.length < 5) {
+      console.log('DipEngine: no candle data for', ticker, '- status:', d && d.s);
+      return null;
+    }
 
     return d.t.map(function(_, i) {
       return { t: d.t[i], o: d.o[i], h: d.h[i], l: d.l[i], c: d.c[i], v: d.v[i] };
@@ -5485,8 +5500,8 @@ function renderDipEngine() {
 
   renderDipEngineRoot();
 
-  // Auto-start engine if in window
-  if (isActive && !dipEngineActive) startDipEngine();
+  // Auto-start engine always
+  if (!dipEngineActive) startDipEngine();
 }
 
 function renderDipEngineRoot() {
@@ -5504,10 +5519,8 @@ function renderDipEngineRoot() {
   html += '<div style="display:flex;align-items:center;gap:10px">';
   html += '<div style="font-size:18px;font-weight:800">🎯 Dip Engine</div>';
   html += '<div style="padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;' +
-    (isActive ? 'background:rgba(34,197,94,.15);color:var(--green)' :
-     isPicker ? 'background:rgba(245,158,11,.15);color:var(--yellow)' :
-     'background:var(--bg3);color:var(--text3)') + '">' +
-    (isActive ? '🟢 LIVE' : isPicker ? '⏰ PICKER WINDOW' : '⏸ STANDBY') + '</div>';
+    (dipEngineActive ? 'background:rgba(34,197,94,.15);color:var(--green)' : 'background:var(--bg3);color:var(--text3)') + '">' +
+    (dipEngineActive ? '🟢 LIVE' : '⏸ STANDBY') + '</div>';
   html += '</div>';
   html += '<div style="font-size:12px;color:var(--text3);margin-top:2px">Smart Dip Entry Engine · Score ≥ 7 = Safe Entry · 1-min candles · Active 6PM–3AM IST</div>';
   html += '</div>';
@@ -5527,7 +5540,7 @@ function renderDipEngineRoot() {
   var istStr = istTime.toUTCString().slice(17, 22) + ' IST';
   html += '<span style="font-size:13px;color:var(--text2)">🕐 ' + istStr + '</span>';
   html += '<span style="color:var(--border)">|</span>';
-  html += '<span style="font-size:12px;color:var(--text3)">📍 Pick stocks: 7:00–8:30 PM IST &nbsp;·&nbsp; ⚡ Engine: 6:00 PM – 3:00 AM IST (1hr pre/post market) &nbsp;·&nbsp; 🔄 Resets: 4:00 AM IST (after US close)</span>';
+  html += '<span style="font-size:12px;color:var(--text3)">⚡ Engine runs 24/7 · Pick stocks any time · US market: ~7:00–7:30 PM IST &nbsp;·&nbsp; 🔄 Resets: 4:00 AM IST</span>';
   html += '</div>';
 
   // ── STOCK PICKER ──
@@ -5610,9 +5623,19 @@ function renderDipPanel(ticker) {
   }
 
   if (err) {
+    // Try fetching quote at least to show price
+    var livePrice = priceCache[ticker] && priceCache[ticker].current;
+    var dc = priceCache[ticker] && priceCache[ticker].dayChange;
     return '<div class="dip-panel">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">' +
       '<div class="dip-ticker">' + ticker + '</div>' +
-      '<div style="padding:1rem;color:var(--text3);font-size:12px">No intraday data. Market may be closed.</div>' +
+      (livePrice ? '<div><div class="dip-price">$' + livePrice.toFixed(2) + '</div>' +
+        '<div style="font-size:11px;color:' + (dc>=0?'var(--green)':'var(--red)') + '">' + (dc>=0?'+':'') + (dc||0).toFixed(2) + '%</div></div>' : '') +
+      '</div>' +
+      '<div style="padding:.75rem;background:var(--bg3);border-radius:8px;color:var(--text3);font-size:12px">' +
+      '⏳ Waiting for intraday candle data...<br>' +
+      '<span style="font-size:11px">US market open: ~7:00–7:30 PM IST · Candles available during market hours</span>' +
+      '</div>' +
       '</div>';
   }
 
@@ -5703,23 +5726,119 @@ function renderDipPanel(ticker) {
   return html;
 }
 
+// ── TICKER AUTOCOMPLETE ──
+var DIP_SUGGEST = [
+  'STRIVE','ASST','MSTR','COIN','HOOD','BBAI','SOUN','PLTR','IONQ','NVDA',
+  'AMD','TSLA','SPCE','RIVN','SOFI','RKLB','HIMS','MARA','RIOT','CLSK',
+  'SMCI','NBIS','RDDT','APP','AFRM','UPST','OPEN','DKNG','PENN','CELH'
+].concat(
+  positions.map(function(p){return p.ticker;}),
+  watchlist.map(function(w){return w.ticker;})
+);
+
+var dipDropSelected = -1;
+
+function dipTickerSearch(val) {
+  val = val.trim().toUpperCase();
+  var dd = document.getElementById('dipTickerDropdown');
+  if (!dd) return;
+  if (!val) { dd.style.display = 'none'; return; }
+
+  // Filter suggestions
+  var unique = DIP_SUGGEST.filter(function(t,i,a){return a.indexOf(t)===i;});
+  var matches = unique.filter(function(t){
+    return t.indexOf(val) === 0 && dipStocks.indexOf(t) < 0;
+  }).slice(0, 8);
+
+  if (!matches.length) { dd.style.display = 'none'; return; }
+
+  dipDropSelected = -1;
+  var ddHtml = '';
+  for (var di = 0; di < matches.length; di++) {
+    var mt = matches[di];
+    ddHtml += '<div data-dipticker="' + mt + '" id="dip-dd-' + di + '" ' +
+      'onclick="selectDipTicker(this.getAttribute(\'data-dipticker\'))" ' +
+      'style="padding:10px 14px;cursor:pointer;font-size:14px;font-weight:700;' +
+      'border-bottom:1px solid rgba(255,255,255,.05)">' + mt + '</div>';
+  }
+  dd.innerHTML = ddHtml;
+  dd.style.display = 'block';
+}
+
+function dipTickerKeydown(e) {
+  var dd = document.getElementById('dipTickerDropdown');
+  var items = dd ? dd.querySelectorAll('div') : [];
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    dipDropSelected = Math.min(dipDropSelected + 1, items.length - 1);
+    Array.from(items).forEach(function(el,i){el.style.background = i===dipDropSelected?'var(--bg3)':'';});
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    dipDropSelected = Math.max(dipDropSelected - 1, -1);
+    Array.from(items).forEach(function(el,i){el.style.background = i===dipDropSelected?'var(--bg3)':'';});
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (dipDropSelected >= 0 && items[dipDropSelected]) {
+      items[dipDropSelected].click();
+    } else {
+      addDipStock();
+    }
+  } else if (e.key === 'Escape') {
+    if (dd) dd.style.display = 'none';
+  }
+}
+
+function selectDipTicker(ticker) {
+  var input = document.getElementById('dipTickerIn');
+  if (input) input.value = ticker;
+  var dd = document.getElementById('dipTickerDropdown');
+  if (dd) dd.style.display = 'none';
+  addDipStock();
+}
+
 function addDipStock() {
   var input = document.getElementById('dipTickerIn');
   var ticker = ((input && input.value) || '').trim().toUpperCase();
+  var dd = document.getElementById('dipTickerDropdown');
+  if (dd) dd.style.display = 'none';
   if (!ticker) return;
   if (dipStocks.indexOf(ticker) >= 0) { toast(ticker + ' already in list', ''); return; }
   if (dipStocks.length >= 6) { toast('Maximum 6 stocks', ''); return; }
   dipStocks.push(ticker);
-  if (input) input.value = '';
-  renderDipEngineRoot();
+  if (input) { input.value = ''; input.focus(); }
+  // Update chips only — don't rebuild the whole UI (keeps focus)
+  updateDipChips();
   // Immediately fetch data for new stock
   if (apiKey) processDipStock(ticker).then(renderDipPanels);
+  toast(ticker + ' added ✓', 't-success');
 }
 
 function removeDipStock(ticker) {
   dipStocks = dipStocks.filter(function(t) { return t !== ticker; });
   delete dipData[ticker];
-  renderDipEngineRoot();
+  updateDipChips();
+  renderDipPanels();
+}
+
+function updateDipChips() {
+  // Update just the chips + input without rebuilding the whole page
+  var chipsEl = document.getElementById('dipChipsWrap');
+  if (!chipsEl) { renderDipEngineRoot(); return; }
+  var html = '';
+  dipStocks.forEach(function(t) {
+    var isFixed = t === 'STRIVE' || t === 'ASST';
+    html += '<div style="display:flex;align-items:center;gap:5px;padding:5px 10px;border-radius:20px;' +
+      (isFixed ? 'background:rgba(124,111,255,.15);border:1px solid rgba(124,111,255,.3)' :
+       'background:var(--bg3);border:1px solid var(--border)') + '">';
+    html += '<span style="font-size:13px;font-weight:700">' + t + '</span>';
+    if (!isFixed) {
+      html += '<button data-rt="' + t + '" onclick="removeDipStock(this.getAttribute(\'data-rt\'))" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;padding:0;line-height:1">✕</button>';
+    } else {
+      html += '<span style="font-size:10px;color:var(--accent2)">always</span>';
+    }
+    html += '</div>';
+  });
+  chipsEl.innerHTML = html;
 }
 
 
